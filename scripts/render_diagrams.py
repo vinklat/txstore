@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Render ``docs/**/*.puml`` to committed SVG and check that every SVG is current.
+"""Render ``docs/**/diagrams/*.puml`` to committed SVG and check that every SVG is current.
 
 GitHub does not render PlantUML fences, so each diagram lives in ``docs/<dir>/diagrams/*.puml`` and
-its page embeds the sibling ``.svg``. Rendering runs the pinned PlantUML Docker image in pipe mode
-and stamps each SVG with the PlantUML version and the SHA-256 of its source, so ``--check`` detects
-a stale or missing render offline, with only the standard library.
+its page embeds the sibling ``.svg`` (fences and embedding → ``check_docs.py``). Rendering runs the
+pinned PlantUML Docker image in pipe mode with no network. Line 1 of each SVG is a stamp holding the
+PlantUML version and a SHA-256 of the image, the PlantUML arguments, and the source, so ``--check``
+detects a stale render offline, with only the standard library.
 
 ``--check`` reports:
 
-- a ``.puml`` without a rendered ``.svg``;
-- an ``.svg`` whose stamp is missing or names another source hash or PlantUML version;
-- an ``.svg`` in a ``diagrams/`` directory without its ``.puml``;
-- a ``plantuml`` or ``puml`` fence in a root ``*.md`` or ``docs/**/*.md``.
+- a ``.puml`` under ``docs/`` outside a ``diagrams/`` directory;
+- a URL in a source, which an offline render cannot fetch;
+- a source without a rendered ``.svg``, or with one whose stamp does not match;
+- an ``.svg`` in a ``diagrams/`` directory without its ``.puml``.
 
 Usage:
     uv run python scripts/render_diagrams.py            # render stale diagrams (needs Docker)
@@ -34,11 +35,12 @@ IMAGE = (
     f"plantuml/plantuml:{PLANTUML_VERSION}"
     "@sha256:9b5071ab56a4192aac458ab4b0d42261c22c8109695894ae5be6013c3be6cac1"
 )
+# Container options; they do not change the output, so the stamp does not hash them.
+DOCKER_ARGS = ("docker", "run", "--rm", "-i", "--network=none")
 RENDER_ARGS = ("-tsvg", "-pipe", "-nometadata", "-failfast2", "-SbackgroundColor=white")
 
-STAMP_RE = re.compile(r"<!-- render_diagrams plantuml=(\S+) sha256=([0-9a-f]{64}) -->")
-XML_DECL_RE = re.compile(r"^<\?xml[^>]*\?>")
-PLANTUML_FENCE_RE = re.compile(r"^\s{0,3}(?:`{3,}|~{3,})\s*(?:plantuml|puml)\b")
+DIAGRAMS = "diagrams"
+URL_RE = re.compile(r"https?://")
 RERUN = "re-run scripts/render_diagrams.py"
 
 
@@ -47,79 +49,93 @@ def _relative(path: Path) -> str:
 
 
 def _sources() -> list[Path]:
-    return sorted((REPO_ROOT / "docs").rglob("*.puml"))
+    return sorted((REPO_ROOT / "docs").rglob(f"{DIAGRAMS}/*.puml"))
 
 
-def _digest(source: Path) -> str:
-    return hashlib.sha256(source.read_bytes()).hexdigest()
+def digest(source: Path) -> str:
+    """SHA-256 of the render recipe: the image, the PlantUML arguments, and the source bytes."""
+    recipe = hashlib.sha256()
+    for part in (IMAGE, *RENDER_ARGS):
+        recipe.update(part.encode() + b"\0")
+    recipe.update(source.read_bytes())
+    return recipe.hexdigest()
 
 
-def stamp(svg: str, digest: str) -> str:
-    """``svg`` with the render stamp after its XML declaration, or first when it has none."""
-    comment = f"<!-- render_diagrams plantuml={PLANTUML_VERSION} sha256={digest} -->"
-    decl = XML_DECL_RE.match(svg)
-    if decl is None:
-        return f"{comment}\n{svg}"
-    return f"{svg[: decl.end()]}\n{comment}{svg[decl.end() :]}"
+def stamp_line(recipe: str, version: str = PLANTUML_VERSION) -> str:
+    """The stamp comment for a render of ``recipe`` by PlantUML ``version``."""
+    return f"<!-- render_diagrams plantuml={version} sha256={recipe} -->"
 
 
-def read_stamp(svg: str) -> tuple[str, str] | None:
-    """``(plantuml version, source sha256)`` of a stamped SVG, or ``None`` when unstamped."""
-    match = STAMP_RE.search(svg)
-    return None if match is None else (match.group(1), match.group(2))
+def stamp(svg: str, recipe: str) -> str:
+    """``svg`` with the stamp as its first line; PlantUML emits no XML declaration to precede."""
+    return f"{stamp_line(recipe)}\n{svg}"
 
 
-def is_current(source: Path) -> bool:
-    """The sibling SVG exists and was rendered from this source by the pinned PlantUML."""
+def problem(source: Path) -> str | None:
+    """Why the render of ``source`` is not current, or ``None`` when it is."""
     svg = source.with_suffix(".svg")
     if not svg.is_file():
-        return False
-    return read_stamp(svg.read_text()) == (PLANTUML_VERSION, _digest(source))
+        return f"{_relative(source)}: no rendered {svg.name}; {RERUN}"
+    if not svg.read_text(encoding="utf-8").startswith(stamp_line(digest(source)) + "\n"):
+        return f"{_relative(svg)}: stale; {RERUN}"
+    return None
 
 
-def check() -> list[str]:
-    """Every problem with the diagram sources, their renders, and the documents."""
-    errors: list[str] = []
-    for source in _sources():
-        svg = source.with_suffix(".svg")
-        if not svg.is_file():
-            errors.append(f"{_relative(source)}: no rendered {svg.name}; {RERUN}")
-        elif not is_current(source):
-            errors.append(f"{_relative(svg)}: stale; {RERUN}")
-    for svg in sorted((REPO_ROOT / "docs").rglob("diagrams/*.svg")):
+def check(sources: list[Path] | None = None) -> list[str]:
+    """Every problem with the diagram sources and their renders."""
+    sources = _sources() if sources is None else sources
+    errors = [
+        f"{_relative(path)}: diagram source outside a {DIAGRAMS}/ directory"
+        for path in sorted((REPO_ROOT / "docs").rglob("*.puml"))
+        if path.parent.name != DIAGRAMS
+    ]
+    for source in sources:
+        for lineno, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+            if URL_RE.search(line):
+                errors.append(
+                    f"{_relative(source)}:{lineno}: URL in a diagram; renders are offline"
+                )
+        found = problem(source)
+        if found is not None:
+            errors.append(found)
+    for svg in sorted((REPO_ROOT / "docs").rglob(f"{DIAGRAMS}/*.svg")):
         if not svg.with_suffix(".puml").is_file():
             errors.append(f"{_relative(svg)}: no source {svg.with_suffix('.puml').name}")
-    documents = [*sorted(REPO_ROOT.glob("*.md")), *sorted((REPO_ROOT / "docs").rglob("*.md"))]
-    for document in documents:
-        for lineno, line in enumerate(document.read_text().splitlines(), 1):
-            if PLANTUML_FENCE_RE.match(line):
-                errors.append(
-                    f"{_relative(document)}:{lineno}: inline plantuml fence; "
-                    "move it to docs/<dir>/diagrams/*.puml"
-                )
     return errors
 
 
-def render(force: bool = False) -> int:
-    """Render each stale source (every source with ``force``); return the number rendered."""
-    rendered = 0
-    for source in _sources():
-        if not force and is_current(source):
-            continue
+def _plantuml(source: Path) -> str:
+    """SVG text of ``source`` rendered by the pinned image; exit on any render failure."""
+    try:
         result = subprocess.run(
-            ["docker", "run", "--rm", "-i", IMAGE, *RENDER_ARGS],
+            [*DOCKER_ARGS, IMAGE, *RENDER_ARGS],
             input=source.read_bytes(),
             capture_output=True,
             check=False,
         )
-        output = result.stdout.decode()
-        if result.returncode != 0 or "<svg" not in output:
-            raise SystemExit(
-                f"render_diagrams: {_relative(source)} failed (exit {result.returncode})\n"
-                f"{result.stderr.decode()}"
-            )
-        source.with_suffix(".svg").write_text(stamp(output, _digest(source)))
-        print(f"rendered {_relative(source.with_suffix('.svg'))}")
+    except FileNotFoundError:
+        raise SystemExit(
+            "render_diagrams: docker not found; rendering needs Docker → SETUP.md#diagrams"
+        ) from None
+    output = result.stdout.decode("utf-8")
+    if result.returncode != 0 or not output.startswith("<svg"):
+        raise SystemExit(
+            f"render_diagrams: {_relative(source)} failed (exit {result.returncode})\n"
+            f"{result.stderr.decode('utf-8', errors='replace')}"
+        )
+    return output
+
+
+def render(force: bool = False, sources: list[Path] | None = None) -> int:
+    """Render each stale source (every source with ``force``); return the number rendered."""
+    sources = _sources() if sources is None else sources
+    rendered = 0
+    for source in sources:
+        if not force and problem(source) is None:
+            continue
+        svg = source.with_suffix(".svg")
+        svg.write_text(stamp(_plantuml(source), digest(source)), encoding="utf-8")
+        print(f"rendered {_relative(svg)}")
         rendered += 1
     return rendered
 
@@ -131,17 +147,18 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--check", action="store_true", help="fail on stale diagrams")
     mode.add_argument("--force", action="store_true", help="render every diagram")
     args = parser.parse_args(argv)
+    sources = _sources()
     if not args.check:
-        rendered = render(force=args.force)
-        print(f"render_diagrams: rendered {rendered} of {len(_sources())} diagrams")
+        rendered = render(force=args.force, sources=sources)
+        print(f"render_diagrams: rendered {rendered} of {len(sources)} diagrams")
         return 0
-    errors = check()
+    errors = check(sources)
     for error in errors:
         print(error)
     if errors:
         print(f"render_diagrams: {len(errors)} problem(s)")
         return 1
-    print(f"render_diagrams: OK ({len(_sources())} diagrams)")
+    print(f"render_diagrams: OK ({len(sources)} diagrams)")
     return 0
 
 

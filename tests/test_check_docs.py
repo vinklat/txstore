@@ -75,6 +75,41 @@ def test_unterminated_fence_is_reported() -> None:
     ]
 
 
+# Diagrams
+
+
+@pytest.mark.parametrize(
+    ("opener", "closer", "info"),
+    [
+        ("```plantuml", "```", "plantuml"),
+        ("~~~ puml", "~~~", "puml"),
+        ("````PlantUML {x}", "````", "PlantUML"),
+    ],
+)
+def test_diagram_fence_is_reported(opener: str, closer: str, info: str) -> None:
+    docs = {"A.md": f"# A\n\n{opener}\nA -> B\n{closer}\n"}
+    assert check_docs.check_diagram_fences(docs) == [
+        f"A.md:3: {info} fence; move it to docs/<dir>/diagrams/*.puml"
+    ]
+
+
+def test_diagram_fence_nested_in_another_block_is_an_example() -> None:
+    docs = {"A.md": "````markdown\n```plantuml\nA -> B\n```\n````\n```python\nx = 1\n```\n"}
+    assert check_docs.check_diagram_fences(docs) == []
+
+
+def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
+    _write(repo, "docs/dev/diagrams/shown.svg", "<svg/>")
+    _write(repo, "docs/dev/diagrams/hidden.svg", "<svg/>")
+    _write(repo, "docs/dev/logo.svg", "<svg/>")
+    docs = {
+        "docs/dev/page.md": "![Shown](diagrams/shown.svg)\n```\n![x](diagrams/hidden.svg)\n```\n"
+    }
+    assert check_docs.check_diagram_embeds(docs) == [
+        "docs/dev/diagrams/hidden.svg: diagram is linked from no document"
+    ]
+
+
 def test_code_references_resolve(repo: Path) -> None:
     # Citations are assembled so this file does not cite them itself.
     good, bad, missing = "STORAGE.md" + "#good", "STORAGE.md" + "#bad", "CONFIG.md" + "#any"

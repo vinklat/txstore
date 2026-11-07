@@ -1,8 +1,7 @@
-"""`scripts/render_diagrams.py`: the stamp, each check on a synthetic tree, and the repository."""
+"""`scripts/render_diagrams.py`: the stamp, each check, render with Docker faked, and the CLI."""
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import subprocess
 import sys
@@ -15,7 +14,7 @@ _REPO = Path(__file__).resolve().parents[1]
 _PATH = _REPO / "scripts" / "render_diagrams.py"
 _SOURCE = "@startuml\nA -> B : hello\n@enduml\n"
 _SVG = '<svg xmlns="http://www.w3.org/2000/svg"><text>hello</text></svg>'
-_DIGEST = hashlib.sha256(_SOURCE.encode()).hexdigest()
+_STALE = "docs/dev/diagrams/flow.svg: stale; re-run scripts/render_diagrams.py"
 
 
 def _load() -> types.ModuleType:
@@ -41,14 +40,18 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path
 
 
-def _diagram(repo: Path, source: str = _SOURCE, rendered_from: str | None = None) -> Path:
-    """Write a ``.puml`` and, unless ``rendered_from`` is empty, an SVG stamped from that text."""
-    puml = repo / "docs" / "dev" / "diagrams" / "flow.puml"
+def _diagram(repo: Path, source: str = _SOURCE, name: str = "flow") -> Path:
+    """Write ``docs/dev/diagrams/<name>.puml`` only."""
+    puml = repo / "docs" / "dev" / "diagrams" / f"{name}.puml"
     puml.write_text(source)
-    if rendered_from != "":
-        digest = hashlib.sha256((rendered_from or source).encode()).hexdigest()
-        puml.with_suffix(".svg").write_text(render_diagrams.stamp(_SVG, digest))
     return puml
+
+
+def _render(puml: Path) -> Path:
+    """Write the sibling SVG as a current render of the source as it is now."""
+    svg = puml.with_suffix(".svg")
+    svg.write_text(render_diagrams.stamp(_SVG, render_diagrams.digest(puml)))
+    return svg
 
 
 def test_repository_diagrams_current() -> None:
@@ -58,79 +61,84 @@ def test_repository_diagrams_current() -> None:
 # Stamp
 
 
-def test_stamp_round_trips_and_keeps_xml_declaration_first() -> None:
-    digest = "a" * 64
-    stamped = render_diagrams.stamp(f'<?xml version="1.0"?>{_SVG}', digest)
-    assert stamped.startswith('<?xml version="1.0"?>\n<!-- render_diagrams ')
-    assert stamped.endswith(_SVG)
-    assert render_diagrams.read_stamp(stamped) == (render_diagrams.PLANTUML_VERSION, digest)
-
-
-def test_stamp_leads_an_svg_without_declaration() -> None:
-    stamped = render_diagrams.stamp(_SVG, "b" * 64)
-    assert stamped.startswith("<!-- render_diagrams ")
-    assert stamped.endswith(_SVG)
-
-
-def test_read_stamp_rejects_unstamped_svg() -> None:
-    assert render_diagrams.read_stamp(_SVG) is None
+def test_stamp_is_the_first_line() -> None:
+    recipe = "a" * 64
+    assert render_diagrams.stamp(_SVG, recipe) == f"{render_diagrams.stamp_line(recipe)}\n{_SVG}"
 
 
 # Check
 
 
 def test_check_accepts_current_diagram(repo: Path) -> None:
-    _diagram(repo)
+    _render(_diagram(repo))
     assert render_diagrams.check() == []
 
 
 def test_check_reports_edited_source(repo: Path) -> None:
-    _diagram(repo, source=_SOURCE.replace("hello", "bye"), rendered_from=_SOURCE)
-    assert render_diagrams.check() == [
-        "docs/dev/diagrams/flow.svg: stale; re-run scripts/render_diagrams.py"
-    ]
+    puml = _diagram(repo)
+    _render(puml)
+    puml.write_text(_SOURCE.replace("hello", "bye"))
+    assert render_diagrams.check() == [_STALE]
 
 
 @pytest.mark.parametrize(
-    "svg",
+    ("attribute", "value"),
     [
-        pytest.param(_SVG, id="unstamped"),
-        pytest.param(
-            f"<!-- render_diagrams plantuml=0.0.1 sha256={_DIGEST} -->{_SVG}",
-            id="other-plantuml-version",
-        ),
+        pytest.param("IMAGE", "plantuml/plantuml:1.2026.9@sha256:" + "0" * 64, id="image-digest"),
+        pytest.param("RENDER_ARGS", ("-tsvg", "-pipe"), id="plantuml-arguments"),
     ],
 )
-def test_check_reports_svg_not_from_pinned_render(repo: Path, svg: str) -> None:
+def test_check_reports_changed_render_recipe(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, attribute: str, value: object
+) -> None:
+    _render(_diagram(repo))
+    monkeypatch.setattr(render_diagrams, attribute, value)
+    assert render_diagrams.check() == [_STALE]
+
+
+@pytest.mark.parametrize("variant", ["unstamped", "other-plantuml-version", "stamp-not-first"])
+def test_check_reports_svg_not_from_pinned_render(repo: Path, variant: str) -> None:
     puml = _diagram(repo)
+    recipe = render_diagrams.digest(puml)
+    svg = {
+        "unstamped": _SVG,
+        "other-plantuml-version": f"{render_diagrams.stamp_line(recipe, '0.0.1')}\n{_SVG}",
+        "stamp-not-first": f"{_SVG}\n{render_diagrams.stamp_line(recipe)}\n",
+    }[variant]
     puml.with_suffix(".svg").write_text(svg)
-    assert render_diagrams.check() == [
-        "docs/dev/diagrams/flow.svg: stale; re-run scripts/render_diagrams.py"
-    ]
+    assert render_diagrams.check() == [_STALE]
 
 
 def test_check_reports_missing_render(repo: Path) -> None:
-    _diagram(repo, rendered_from="")
+    _diagram(repo)
     assert render_diagrams.check() == [
         "docs/dev/diagrams/flow.puml: no rendered flow.svg; re-run scripts/render_diagrams.py"
     ]
 
 
 def test_check_reports_orphan_render(repo: Path) -> None:
-    _diagram(repo).unlink()
+    puml = _diagram(repo)
+    _render(puml)
+    puml.unlink()
     assert render_diagrams.check() == ["docs/dev/diagrams/flow.svg: no source flow.puml"]
 
 
-@pytest.mark.parametrize("fence", ["```plantuml", "~~~ puml", "````plantuml"])
-def test_check_reports_inline_plantuml_fence(repo: Path, fence: str) -> None:
-    (repo / "docs" / "dev" / "page.md").write_text(f"# Page\n\n{fence}\nA -> B\n```\n")
-    (repo / "ROOT.md").write_text(f"{fence}\nA -> B\n```\n")
-    hint = "inline plantuml fence; move it to docs/<dir>/diagrams/*.puml"
-    assert render_diagrams.check() == [f"ROOT.md:1: {hint}", f"docs/dev/page.md:3: {hint}"]
+@pytest.mark.parametrize("relative", ["docs/dev/flow.puml", "docs/dev/diagrams/sub/flow.puml"])
+def test_check_reports_source_outside_diagrams(repo: Path, relative: str) -> None:
+    (repo / relative).parent.mkdir(parents=True, exist_ok=True)
+    (repo / relative).write_text(_SOURCE)
+    assert render_diagrams.check() == [f"{relative}: diagram source outside a diagrams/ directory"]
 
 
-def test_check_ignores_other_fences(repo: Path) -> None:
-    (repo / "ROOT.md").write_text("```python\nx = 1\n```\n")
+def test_check_reports_url_in_source(repo: Path) -> None:
+    _render(_diagram(repo, source="@startuml\n!include https://example.com/x.puml\n@enduml\n"))
+    assert render_diagrams.check() == [
+        "docs/dev/diagrams/flow.puml:2: URL in a diagram; renders are offline"
+    ]
+
+
+def test_check_ignores_svg_outside_diagrams(repo: Path) -> None:
+    (repo / "docs" / "dev" / "logo.svg").write_text(_SVG)
     assert render_diagrams.check() == []
 
 
@@ -152,13 +160,20 @@ def _fake_docker(
     return calls
 
 
-def test_render_writes_stamped_svg_from_stdin(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_render_runs_pinned_image_offline(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = _fake_docker(monkeypatch)
-    puml = _diagram(repo, rendered_from="")
+    puml = _diagram(repo)
     assert render_diagrams.render() == 1
     [(args, stdin)] = calls
-    assert args[:4] == ["docker", "run", "--rm", "-i"]
-    assert render_diagrams.IMAGE in args
+    assert args == [
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--network=none",
+        render_diagrams.IMAGE,
+        *render_diagrams.RENDER_ARGS,
+    ]
     assert stdin == _SOURCE.encode()
     assert render_diagrams.check() == []
     assert puml.with_suffix(".svg").read_text().endswith(_SVG)
@@ -166,7 +181,7 @@ def test_render_writes_stamped_svg_from_stdin(repo: Path, monkeypatch: pytest.Mo
 
 def test_render_skips_current_unless_forced(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = _fake_docker(monkeypatch)
-    _diagram(repo)
+    _render(_diagram(repo))
     assert render_diagrams.render() == 0
     assert calls == []
     assert render_diagrams.render(force=True) == 1
@@ -174,20 +189,50 @@ def test_render_skips_current_unless_forced(repo: Path, monkeypatch: pytest.Monk
 
 @pytest.mark.parametrize(
     ("returncode", "stdout"),
-    [pytest.param(200, _SVG, id="nonzero-exit"), pytest.param(0, "", id="no-svg")],
+    [
+        pytest.param(200, _SVG, id="nonzero-exit"),
+        pytest.param(0, "", id="no-svg"),
+        pytest.param(0, f'<?xml version="1.0"?>{_SVG}', id="xml-declaration"),
+    ],
 )
 def test_render_fails_without_svg(
     repo: Path, monkeypatch: pytest.MonkeyPatch, returncode: int, stdout: str
 ) -> None:
     _fake_docker(monkeypatch, returncode=returncode, stdout=stdout)
-    puml = _diagram(repo, rendered_from="")
-    with pytest.raises(SystemExit, match="flow.puml failed"):
+    puml = _diagram(repo)
+    with pytest.raises(SystemExit, match=r"flow\.puml failed(?s:.*)syntax error"):
         render_diagrams.render()
     assert not puml.with_suffix(".svg").exists()
 
 
-def test_main_check_exit_codes(repo: Path) -> None:
+def test_render_reports_missing_docker(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        raise FileNotFoundError(2, "No such file or directory", "docker")
+
+    monkeypatch.setattr(render_diagrams.subprocess, "run", run)
     _diagram(repo)
+    with pytest.raises(SystemExit, match="docker not found"):
+        render_diagrams.render()
+
+
+# Command line
+
+
+@pytest.mark.parametrize(("argv", "renders"), [([], 0), (["--force"], 1)])
+def test_main_renders(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, argv: list[str], renders: int
+) -> None:
+    calls = _fake_docker(monkeypatch)
+    _render(_diagram(repo))
+    assert render_diagrams.main(argv) == 0
+    assert len(calls) == renders
+
+
+def test_main_check_passes_current(repo: Path) -> None:
+    _render(_diagram(repo))
     assert render_diagrams.main(["--check"]) == 0
-    _diagram(repo, source="@startuml\n@enduml\n", rendered_from=_SOURCE)
+
+
+def test_main_check_fails_stale(repo: Path) -> None:
+    _diagram(repo)
     assert render_diagrams.main(["--check"]) == 1

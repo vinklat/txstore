@@ -11,6 +11,8 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
 - the ``EXCEPTIONS.md`` exception table equals the ``class *Exception`` definitions in the source,
   and every backticked ``*Exception`` name in any document is a defined class;
 - no document leaves a code fence open, which would hide every later line from every check above;
+- no document opens a ``plantuml`` or ``puml`` fence, which GitHub does not render, and every
+  ``docs/**/diagrams/*.svg`` is linked from a document (SETUP.md diagrams);
 - prose lines stay within 100 columns (table rows, fenced blocks, lines carrying a URL, and
   single-token lines are exempt);
 - every table row has as many cells as its header;
@@ -35,7 +37,9 @@ import re
 import sys
 import tomllib
 from collections import Counter
+from collections.abc import Container
 from pathlib import Path
+from typing import NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGE = Path("src") / "txstore"
@@ -45,8 +49,10 @@ ENV_HELPERS = frozenset({"env_str", "env_bool", "env_int"})
 
 # Root documents allowed to carry TODO-style markers (deviations are recorded there by design).
 TODO_EXEMPT: frozenset[str] = frozenset({"ROADMAP.md"})
+# Fence info strings of diagrams GitHub does not render; they live as rendered SVG instead.
+DIAGRAM_FENCES = frozenset({"plantuml", "puml"})
 
-FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})")
+FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})\s*([^\s`]*)")
 HEADING_RE = re.compile(r"^(#+)\s+(.*?)\s*$")
 LINK_RE = re.compile(r"\]\(([^)\s]*)\)")
 EXTERNAL_RE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:)")
@@ -63,6 +69,17 @@ EXCEPTION_CELL_RE = re.compile(r"^`([A-Z][A-Za-z0-9]*Exception)`$")
 
 Lines = list[tuple[int, str]]
 Table = tuple[int, list[str], list[tuple[int, list[str]]]]
+
+
+class Fences(NamedTuple):
+    """A document split by its fenced code blocks."""
+
+    prose: Lines
+    """``(lineno, line)`` outside fenced blocks."""
+    openers: Lines
+    """``(lineno, info string)`` of each outermost fence opener."""
+    unclosed: int | None
+    """Line where a fence opened and never closed."""
 
 
 def _slug(heading: str) -> str:
@@ -84,9 +101,10 @@ def _docs_markdown() -> dict[str, str]:
     }
 
 
-def _scan_fences(text: str) -> tuple[Lines, int | None]:
-    """Prose lines outside fenced blocks, and the line where an unclosed fence opened."""
+def _scan_fences(text: str) -> Fences:
+    """Prose lines, outermost fence openers, and the line where an unclosed fence opened."""
     lines: Lines = []
+    openers: Lines = []
     fence: str | None = None
     opened = 0
     for lineno, line in enumerate(text.splitlines(), 1):
@@ -98,14 +116,35 @@ def _scan_fences(text: str) -> tuple[Lines, int | None]:
         token = match.group(1)
         if fence is None:
             fence, opened = token, lineno
+            openers.append((lineno, match.group(2)))
         elif token[0] == fence[0] and len(token) >= len(fence):
             fence = None
-    return lines, (opened if fence is not None else None)
+    return Fences(lines, openers, opened if fence is not None else None)
 
 
 def _prose_lines(text: str) -> Lines:
     """``(lineno, line)`` pairs outside fenced code blocks."""
-    return _scan_fences(text)[0]
+    return _scan_fences(text).prose
+
+
+def _target(source: str, target: str, known: Container[str] = ()) -> str | None:
+    """Repo-relative path of a link target in ``source``; ``None`` when it does not exist."""
+    path = (REPO_ROOT / source).parent / target
+    try:
+        name = path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
+    except ValueError:  # resolves outside the repository
+        return None
+    return name if name in known or (REPO_ROOT / name).exists() else None
+
+
+def _link_targets(text: str) -> list[tuple[int, str]]:
+    """``(lineno, target)`` of each relative link outside fenced blocks; ``]()`` is skipped."""
+    return [
+        (lineno, match.group(1))
+        for lineno, line in _prose_lines(text)
+        for match in LINK_RE.finditer(line)
+        if match.group(1) and not EXTERNAL_RE.match(match.group(1))
+    ]
 
 
 def _anchors(text: str) -> set[str]:
@@ -164,7 +203,7 @@ def check_fences(docs: dict[str, str]) -> list[str]:
     """No document leaves a code fence open: everything after one is invisible to every check."""
     errors: list[str] = []
     for name, text in docs.items():
-        opened = _scan_fences(text)[1]
+        opened = _scan_fences(text).unclosed
         if opened is not None:
             errors.append(
                 f"{name}:{opened}: unterminated code fence hides the rest of the document"
@@ -175,36 +214,44 @@ def check_fences(docs: dict[str, str]) -> list[str]:
 def check_anchors(docs: dict[str, str]) -> list[str]:
     """Every link target exists and every ``.md`` ``#anchor`` resolves to a heading."""
     anchors = {name: _anchors(text) for name, text in docs.items()}
-
-    def resolve(source: str, target: str) -> str | None:
-        """Repo-relative path of a link target, or ``None`` when it does not exist."""
-        path = (REPO_ROOT / source).parent / target
-        try:
-            name = path.resolve().relative_to(REPO_ROOT.resolve()).as_posix()
-        except ValueError:  # resolves outside the repository
-            return None
-        if name in anchors:
-            return name
-        if not (REPO_ROOT / name).exists():
-            return None
-        if name.endswith(".md"):
-            anchors[name] = _anchors((REPO_ROOT / name).read_text())
-        return name
-
     errors: list[str] = []
     for name, text in docs.items():
-        for lineno, line in _prose_lines(text):
-            for match in LINK_RE.finditer(line):
-                target = match.group(1)
-                if target == "" or EXTERNAL_RE.match(target):
-                    continue
-                path, _, anchor = target.partition("#")
-                resolved = name if path == "" else resolve(name, path)
-                if resolved is None:
-                    errors.append(f"{name}:{lineno}: link to missing file {path}")
-                elif anchor and resolved.endswith(".md") and anchor not in anchors[resolved]:
-                    errors.append(f"{name}:{lineno}: broken anchor {resolved}#{anchor}")
+        for lineno, target in _link_targets(text):
+            path, _, anchor = target.partition("#")
+            resolved = name if path == "" else _target(name, path, anchors)
+            if resolved is None:
+                errors.append(f"{name}:{lineno}: link to missing file {path}")
+                continue
+            if resolved.endswith(".md") and resolved not in anchors:
+                anchors[resolved] = _anchors((REPO_ROOT / resolved).read_text())
+            if anchor and resolved.endswith(".md") and anchor not in anchors[resolved]:
+                errors.append(f"{name}:{lineno}: broken anchor {resolved}#{anchor}")
     return errors
+
+
+def check_diagram_fences(docs: dict[str, str]) -> list[str]:
+    """No document opens a PlantUML fence; a fence nested in another block is an example."""
+    return [
+        f"{name}:{lineno}: {info} fence; move it to docs/<dir>/diagrams/*.puml"
+        for name, text in docs.items()
+        for lineno, info in _scan_fences(text).openers
+        if info.lower() in DIAGRAM_FENCES
+    ]
+
+
+def check_diagram_embeds(docs: dict[str, str]) -> list[str]:
+    """Every rendered ``docs/**/diagrams/*.svg`` is the target of a link from some document."""
+    linked = {
+        _target(name, path, docs)
+        for name, text in docs.items()
+        for _, target in _link_targets(text)
+        if (path := target.partition("#")[0])
+    }
+    return [
+        f"{relative}: diagram is linked from no document"
+        for svg in sorted((REPO_ROOT / "docs").rglob("diagrams/*.svg"))
+        if (relative := svg.relative_to(REPO_ROOT).as_posix()) not in linked
+    ]
 
 
 def parse_env_names(sources: list[Path]) -> dict[str, str]:
@@ -411,6 +458,8 @@ def main() -> int:
     errors = [
         *check_fences(all_docs),
         *check_anchors(all_docs),
+        *check_diagram_fences(all_docs),
+        *check_diagram_embeds(all_docs),
         *check_config(docs, parse_env_names(sources)),
         *check_exceptions(all_docs, parse_exceptions(sources)),
         *check_line_length(all_docs),

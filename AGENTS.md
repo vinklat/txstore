@@ -25,7 +25,7 @@ definition.
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
 | `CONFIG.md` | `make_storage` and retention settings, `TX_STORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |
-| `SETUP.md` | Install, test, quality gates, dependency policy, release, upgrade notes |
+| `SETUP.md` | Install, test, quality gates, diagrams, dependency policy, release, upgrade notes |
 
 ## Task routing
 

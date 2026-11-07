@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, test, quality gates, dependency policy, release, and upgrade notes. Routing →
-[AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, test, quality gates, diagrams, dependency policy, release, and upgrade notes. Routing
+→ [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -53,12 +53,15 @@ GitHub does not render PlantUML, so diagrams are committed as SVG next to their 
 
 | Rule | Detail |
 | -- | -- |
-| Source | One diagram per `docs/<dir>/diagrams/*.puml`, wrapped in a bare `@startuml`/`@enduml`, with no URL: renders run offline. |
+| Source | One diagram per `docs/<dir>/diagrams/*.puml`, wrapped in a bare `@startuml`/`@enduml`. |
+| No URL | A source contains no URL: renders run offline. |
 | Embed | A document embeds each rendered `.svg` as a Markdown image; `check_docs.py` reports an SVG that no document embeds as an image. |
 | Fences | No document opens a `plantuml` or `puml` fence; `check_docs.py` reports one outside another fenced block. |
-| Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network; `--force` renders all. Needs Docker. |
+| Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network. |
+| Force | `render_diagrams.py --force` renders every source, stale or not. |
+| Docker | Rendering needs Docker; `--check` does not. |
 | Stamp | Line 1 of each SVG carries the PlantUML version and a SHA-256 of the image, the PlantUML arguments, and the source. |
-| Check | `render_diagrams.py --check` reports, offline, a source outside `diagrams/`, a URL in a source, a missing or stale SVG, and an SVG without its source. |
+| Check | `render_diagrams.py --check` reports, offline, a `.puml` under `docs/` outside a `diagrams/` directory, a URL in a source, a missing or stale SVG, and an SVG without its source. |
 | Upgrade | Changing `IMAGE` or `RENDER_ARGS` in the script marks every SVG stale; re-render and commit them together. |
 | Diff | `.gitattributes` marks rendered SVGs `linguist-generated`, so GitHub collapses their diffs. |
 

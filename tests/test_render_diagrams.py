@@ -12,9 +12,11 @@ import pytest
 
 _REPO = Path(__file__).resolve().parents[1]
 _PATH = _REPO / "scripts" / "render_diagrams.py"
-_SOURCE = "@startuml\nA -> B : hello\n@enduml\n"
-_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><text>hello</text></svg>'
+# Non-ASCII on purpose: sources, renders, and PlantUML errors are UTF-8 text.
+_SOURCE = "@startuml\nA -> B : café → hello\n@enduml\n"
+_SVG = '<svg xmlns="http://www.w3.org/2000/svg"><text>café → 日本</text></svg>'
 _STALE = "docs/dev/diagrams/flow.svg: stale; re-run scripts/render_diagrams.py"
+_MISSING = "docs/dev/diagrams/flow.puml: no rendered flow.svg; re-run scripts/render_diagrams.py"
 
 
 def _load() -> types.ModuleType:
@@ -43,14 +45,14 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 def _diagram(repo: Path, source: str = _SOURCE, name: str = "flow") -> Path:
     """Write ``docs/dev/diagrams/<name>.puml`` only."""
     puml = repo / "docs" / "dev" / "diagrams" / f"{name}.puml"
-    puml.write_text(source)
+    puml.write_text(source, encoding="utf-8")
     return puml
 
 
 def _render(puml: Path) -> Path:
     """Write the sibling SVG as a current render of the source as it is now."""
     svg = puml.with_suffix(".svg")
-    svg.write_text(render_diagrams.stamp(_SVG, render_diagrams.digest(puml)))
+    svg.write_text(render_diagrams.stamp(_SVG, render_diagrams.digest(puml)), encoding="utf-8")
     return svg
 
 
@@ -77,7 +79,7 @@ def test_check_accepts_current_diagram(repo: Path) -> None:
 def test_check_reports_edited_source(repo: Path) -> None:
     puml = _diagram(repo)
     _render(puml)
-    puml.write_text(_SOURCE.replace("hello", "bye"))
+    puml.write_text(_SOURCE.replace("hello", "bye"), encoding="utf-8")
     assert render_diagrams.check() == [_STALE]
 
 
@@ -105,15 +107,13 @@ def test_check_reports_svg_not_from_pinned_render(repo: Path, variant: str) -> N
         "other-plantuml-version": f"{render_diagrams.stamp_line(recipe, '0.0.1')}\n{_SVG}",
         "stamp-not-first": f"{_SVG}\n{render_diagrams.stamp_line(recipe)}\n",
     }[variant]
-    puml.with_suffix(".svg").write_text(svg)
+    puml.with_suffix(".svg").write_text(svg, encoding="utf-8")
     assert render_diagrams.check() == [_STALE]
 
 
 def test_check_reports_missing_render(repo: Path) -> None:
     _diagram(repo)
-    assert render_diagrams.check() == [
-        "docs/dev/diagrams/flow.puml: no rendered flow.svg; re-run scripts/render_diagrams.py"
-    ]
+    assert render_diagrams.check() == [_MISSING]
 
 
 def test_check_reports_orphan_render(repo: Path) -> None:
@@ -138,7 +138,7 @@ def test_check_reports_url_in_source(repo: Path) -> None:
 
 
 def test_check_ignores_svg_outside_diagrams(repo: Path) -> None:
-    (repo / "docs" / "dev" / "logo.svg").write_text(_SVG)
+    (repo / "docs" / "dev" / "logo.svg").write_text(_SVG, encoding="utf-8")
     assert render_diagrams.check() == []
 
 
@@ -154,7 +154,7 @@ def _fake_docker(
         stdin = kwargs["input"]
         assert isinstance(stdin, bytes)
         calls.append((args, stdin))
-        return subprocess.CompletedProcess(args, returncode, stdout.encode(), b"syntax error")
+        return subprocess.CompletedProcess(args, returncode, stdout.encode(), b"syntax error \xff")
 
     monkeypatch.setattr(render_diagrams.subprocess, "run", run)
     return calls
@@ -176,7 +176,7 @@ def test_render_runs_pinned_image_offline(repo: Path, monkeypatch: pytest.Monkey
     ]
     assert stdin == _SOURCE.encode()
     assert render_diagrams.check() == []
-    assert puml.with_suffix(".svg").read_text().endswith(_SVG)
+    assert puml.with_suffix(".svg").read_text(encoding="utf-8").endswith(_SVG)
 
 
 def test_render_skips_current_unless_forced(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -233,6 +233,7 @@ def test_main_check_passes_current(repo: Path) -> None:
     assert render_diagrams.main(["--check"]) == 0
 
 
-def test_main_check_fails_stale(repo: Path) -> None:
+def test_main_check_reports_problems(repo: Path, capsys: pytest.CaptureFixture[str]) -> None:
     _diagram(repo)
     assert render_diagrams.main(["--check"]) == 1
+    assert _MISSING in capsys.readouterr().out.splitlines()

@@ -64,6 +64,14 @@ def test_anchors_report_missing_heading_and_file(repo: Path) -> None:
     ]
 
 
+def test_anchors_resolve_in_page_links_and_documents_under_check(repo: Path) -> None:
+    docs = {
+        "A.md": "# A\n\n## Rule\n[ok](#rule)\n[bad](#nope)\n[k](K.md#h)\n",
+        "K.md": "# K\n\n## H\n",
+    }
+    assert check_docs.check_anchors(docs) == ["A.md:5: broken anchor A.md#nope"]
+
+
 def test_anchors_ignore_fences_and_external_links(repo: Path) -> None:
     docs = {"A.md": "```\n[x](MISSING.md)\n```\n[w](https://example.com/x.md)\n"}
     assert check_docs.check_anchors(docs) == []
@@ -93,9 +101,18 @@ def test_diagram_fence_is_reported(opener: str, closer: str, info: str) -> None:
     ]
 
 
-def test_diagram_fence_nested_in_another_block_is_an_example() -> None:
-    docs = {"A.md": "````markdown\n```plantuml\nA -> B\n```\n````\n```python\nx = 1\n```\n"}
-    assert check_docs.check_diagram_fences(docs) == []
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "````markdown\n```plantuml\nA\n```\n````\n```python\nx = 1\n```\n", id="longer"
+        ),
+        pytest.param("~~~\n```\n```plantuml\nA\n```\n~~~\n", id="other-character"),
+        pytest.param("````\n```\n```plantuml\nA\n```\n````\n", id="shorter-closer"),
+    ],
+)
+def test_diagram_fence_nested_in_another_block_is_an_example(text: str) -> None:
+    assert check_docs.check_diagram_fences({"A.md": text}) == []
 
 
 def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
@@ -103,7 +120,7 @@ def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
     _write(repo, "docs/dev/diagrams/hidden.svg", "<svg/>")
     _write(repo, "docs/dev/logo.svg", "<svg/>")
     docs = {
-        "docs/dev/page.md": "![Shown](diagrams/shown.svg)\n```\n![x](diagrams/hidden.svg)\n```\n"
+        "docs/dev/page.md": "![Shown](diagrams/shown.svg#x)\n```\n![x](diagrams/hidden.svg)\n```\n"
     }
     assert check_docs.check_diagram_embeds(docs) == [
         "docs/dev/diagrams/hidden.svg: diagram is linked from no document"

@@ -133,9 +133,17 @@ def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
         pytest.param('![Flow](diagrams/flow.svg "Flow diagram")\n', True, id="double-title"),
         pytest.param("![Flow](diagrams/flow.svg 'Flow diagram')\n", True, id="single-title"),
         pytest.param("![Flow](diagrams/flow.svg (Flow diagram))\n", True, id="paren-title"),
-        pytest.param("![Flow](<diagrams/flow.svg>)\n", True, id="angle-brackets"),
+        pytest.param("<!-- x -->\n![Flow](diagrams/flow.svg)\n", True, id="after-comment"),
+        pytest.param("Run `x`, then:\n\n![Flow](diagrams/flow.svg)\n", True, id="after-code"),
         pytest.param("[Flow](diagrams/flow.svg)\n", False, id="plain-link"),
+        pytest.param("![Flow](<diagrams/flow.svg>)\n", False, id="angle-brackets"),
+        pytest.param("![Flow][flow]\n\n[flow]: diagrams/flow.svg\n", False, id="reference-style"),
+        pytest.param("\\![Flow](diagrams/flow.svg)\n", False, id="escaped-bang"),
+        pytest.param("<!-- ![Flow](diagrams/flow.svg) -->\n", False, id="html-comment"),
+        pytest.param("<!--\n![Flow](diagrams/flow.svg)\n-->\n", False, id="html-comment-multiline"),
         pytest.param("Write `![Flow](diagrams/flow.svg)` to embed.\n", False, id="inline-code"),
+        pytest.param("Write `` ![Flow](diagrams/flow.svg) `` here.\n", False, id="double-backtick"),
+        pytest.param("Write `see\n![Flow](diagrams/flow.svg)` here.\n", False, id="multiline-code"),
     ],
 )
 def test_diagram_embeds_require_an_image(repo: Path, text: str, embedded: bool) -> None:

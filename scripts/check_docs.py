@@ -55,10 +55,13 @@ DIAGRAM_FENCES = frozenset({"plantuml", "puml"})
 FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})\s*([^\s`]*)")
 HEADING_RE = re.compile(r"^(#+)\s+(.*?)\s*$")
 LINK_RE = re.compile(r"\]\(([^)\s]*)\)")
-# ``![alt](dest)`` or ``![alt](<dest>)``, with an optional "title", 'title', or (title).
+# An unescaped inline ``![alt](dest)``, with an optional "title", 'title', or (title).
 IMAGE_RE = re.compile(
-    r"!\[[^\]]*\]\(\s*(?:<([^>\s]+)>|([^)\s]+))(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)"
+    r"(?<!\\)!\[[^\]]*\]\(\s*([^)\s<>]+)(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)"
 )
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+# A code span: a backtick run closed by a run of the same length, within one paragraph.
+CODE_SPAN_RE = re.compile(r"(?<!`)(`+)(?!`)(?:(?!\n\s*\n).)+?(?<!`)\1(?!`)", re.DOTALL)
 EXTERNAL_RE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:)")
 TABLE_SEP_RE = re.compile(r"^\|[\s:|-]+\|?\s*$")
 CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
@@ -152,12 +155,13 @@ def _link_targets(text: str) -> list[tuple[int, str]]:
 
 
 def _image_targets(text: str) -> list[str]:
-    """Target of each relative Markdown image outside fenced blocks and inline code."""
+    """Target of each relative inline image shown: not in a fence, comment, or code span."""
+    prose = "\n".join(line for _, line in _prose_lines(text))
+    shown = CODE_SPAN_RE.sub("", HTML_COMMENT_RE.sub("", prose))
     return [
         target
-        for _, line in _prose_lines(text)
-        for match in IMAGE_RE.finditer(INLINE_CODE_RE.sub("", line))
-        if not EXTERNAL_RE.match(target := match.group(1) or match.group(2))
+        for match in IMAGE_RE.finditer(shown)
+        if not EXTERNAL_RE.match(target := match.group(1))
     ]
 
 

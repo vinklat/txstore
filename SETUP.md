@@ -55,7 +55,7 @@ GitHub does not render PlantUML, so diagrams are committed as SVG next to their 
 | -- | -- |
 | Source | One diagram per `docs/<dir>/diagrams/*.puml`, wrapped in a bare `@startuml`/`@enduml`. |
 | No URL | A source contains no URL: renders run offline. |
-| Embed | A document embeds each rendered `.svg` as a Markdown image; `check_docs.py` reports an SVG that no document embeds as an image. |
+| Embed | A document embeds each rendered `.svg` as an inline Markdown image with a bare relative path and an optional title; reference-style images and `<path>` destinations do not count. `check_docs.py` reports an SVG that no document displays that way. |
 | Fences | No document opens a `plantuml` or `puml` fence; `check_docs.py` reports one outside another fenced block. |
 | Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network. |
 | Force | `render_diagrams.py --force` renders every source, stale or not. |

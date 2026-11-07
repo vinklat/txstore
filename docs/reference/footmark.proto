@@ -1,0 +1,15 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+message Footmark {
+  int32 header = 1;
+  google.protobuf.Timestamp timestamp = 2;
+  int32 transaction_id = 3;
+  enum Operation {
+    NOOP = 0;
+    BACKUP = 1;
+    PUT = 2;
+    DELETE = 3;
+  }
+  Operation operation = 4;
+}

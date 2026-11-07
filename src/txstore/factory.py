@@ -1,7 +1,7 @@
 """Storage construction from a URL.
 
 `make_storage` routes a storage URL to its backend and resolves each setting from an explicit
-argument, then its ``TX_STORE_*`` environment variable where one exists, then the default →
+argument, then its ``TXSTORE_*`` environment variable where one exists, then the default →
 [CONFIG.md](CONFIG.md#storage-construction). Callers never need to import the concrete
 backend classes.
 """
@@ -39,7 +39,7 @@ def make_storage(
 ) -> Storage:
     """Build a `Storage` instance for `url`.
 
-    Each ``None`` argument falls back to its ``TX_STORE_*`` variable, then to its default.
+    Each ``None`` argument falls back to its ``TXSTORE_*`` variable, then to its default.
 
     Args:
         url: Storage URL (``fs://``, ``s3://``, ``http://``, ``https://``).
@@ -67,7 +67,7 @@ def make_storage(
     if not url:
         raise StorageException("Empty storage URL.")
 
-    verify = _first(verify_ssl, lambda: env_bool("TX_STORE_VERIFY_SSL"), True)
+    verify = _first(verify_ssl, lambda: env_bool("TXSTORE_VERIFY_SSL"), True)
 
     storage_type, url_scheme, url_netloc, url_path = parse_storage_url(url)
     logger.debug("Build storage: type=%s url=%s", storage_type, redact_url(url))
@@ -116,16 +116,16 @@ def _make_s3(
         StorageException: If no access or secret key resolves.
     """
     bucket, prefix = parse_s3_url_path(url_path)
-    acl_setting = _first(s3_default_acl, lambda: env_str("TX_STORE_S3_DEFAULT_ACL"), NO_ACL)
+    acl_setting = _first(s3_default_acl, lambda: env_str("TXSTORE_S3_DEFAULT_ACL"), NO_ACL)
     default_acl = None if acl_setting == NO_ACL else parse_object_acl(acl_setting)
-    bucket_setting = _first(s3_bucket_acl, lambda: env_str("TX_STORE_S3_BUCKET_ACL"), None)
+    bucket_setting = _first(s3_bucket_acl, lambda: env_str("TXSTORE_S3_BUCKET_ACL"), None)
     # Never derived from the default ACL: on a bucket even `public-read` lists every key
     # → [STORAGE.md](STORAGE.md#construction).
     bucket_acl = None if bucket_setting is None else parse_bucket_acl(bucket_setting)
     # Keys last: a malformed path or ACL stays `ValueError` whether or not they resolve
     # → [EXCEPTIONS.md](EXCEPTIONS.md#rules).
-    access = _first(s3_access, lambda: env_str("TX_STORE_S3_ACCESS"), None)
-    secret = _first(s3_secret, lambda: env_str("TX_STORE_S3_SECRET"), None)
+    access = _first(s3_access, lambda: env_str("TXSTORE_S3_ACCESS"), None)
+    secret = _first(s3_secret, lambda: env_str("TXSTORE_S3_SECRET"), None)
     if not access or not secret:
         names = (("s3_access", access), ("s3_secret", secret))
         missing = [name for name, value in names if not value]

@@ -142,7 +142,7 @@ Implemented by `txstore/_env.py`; names → [CONFIG.md](CONFIG.md#environment-va
 | Unset or empty | Treated alike: the setting falls back to its default. | — |
 | Boolean | `1/0`, `true/false`, `yes/no`, `on/off`, any case, surrounding space ignored. | → `ValueError` naming the variable |
 | Integer | Decimal, optional sign, surrounding space ignored. | → `ValueError` naming the variable |
-| Name | Only `TX_STORE_*` names are read; an unprefixed name such as `S3_ACCESS` is never a fallback. | — |
+| Name | Only `TXSTORE_*` names are read; an unprefixed name such as `S3_ACCESS` is never a fallback. | — |
 
 ## Maintenance
 

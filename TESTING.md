@@ -9,7 +9,7 @@ not copied here.
 - Run with `uv run pytest` → [SETUP.md](SETUP.md#test).
 - Keep tests offline: no real network and no real cloud account. S3 tests use the session-scoped
   `moto_server` fixture; HTTP tests use `responses`.
-- `tests/conftest.py` clears every `TX_STORE_*` variable before each test; a test sets one with
+- `tests/conftest.py` clears every `TXSTORE_*` variable before each test; a test sets one with
   `monkeypatch.setenv`.
 - Shared stubs, the in-memory `MemoryTxnStorage` backend, and history helpers live in
   `tests/helpers/storage.py`; prefer them over ad-hoc setup.

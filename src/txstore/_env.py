@@ -1,4 +1,4 @@
-"""Read ``TX_STORE_*`` environment variables.
+"""Read ``TXSTORE_*`` environment variables.
 
 The only module that reads `os.environ`. Each helper returns one variable's parsed value, or None
 when it is unset or empty; callers resolve an explicit argument first, then the variable, then
@@ -11,7 +11,7 @@ from __future__ import annotations
 import os
 import re
 
-ENV_PREFIX = "TX_STORE_"
+ENV_PREFIX = "TXSTORE_"
 
 _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
@@ -23,7 +23,7 @@ def _raw(name: str) -> str | None:
     """Return the value of variable `name`, or None when unset or empty.
 
     Raises:
-        ValueError: If `name` lacks the ``TX_STORE_`` prefix (a programming error).
+        ValueError: If `name` lacks the ``TXSTORE_`` prefix (a programming error).
     """
     if not name.startswith(ENV_PREFIX):
         raise ValueError(f"environment variable {name!r} lacks the {ENV_PREFIX} prefix")

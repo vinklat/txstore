@@ -114,14 +114,14 @@ def test_make_storage_s3_credentials_from_arguments() -> None:
 
 
 def test_make_storage_s3_credentials_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_S3_ACCESS", "env-k")
-    monkeypatch.setenv("TX_STORE_S3_SECRET", "env-s")
+    monkeypatch.setenv("TXSTORE_S3_ACCESS", "env-k")
+    monkeypatch.setenv("TXSTORE_S3_SECRET", "env-s")
     assert _s3_init_args()[2:4] == ("env-k", "env-s")
 
 
 def test_make_storage_s3_argument_overrides_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_S3_ACCESS", "env-k")
-    monkeypatch.setenv("TX_STORE_S3_SECRET", "env-s")
+    monkeypatch.setenv("TXSTORE_S3_ACCESS", "env-k")
+    monkeypatch.setenv("TXSTORE_S3_SECRET", "env-s")
     assert _s3_init_args(**_CREDS)[2:4] == ("k", "s")
 
 
@@ -143,8 +143,8 @@ def test_make_storage_s3_empty_credential_argument_is_missing_not_unset(
     name: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Only ``None`` counts as not given (CONFIG.md#resolution); an empty key is never usable."""
-    monkeypatch.setenv("TX_STORE_S3_ACCESS", "env-k")
-    monkeypatch.setenv("TX_STORE_S3_SECRET", "env-s")
+    monkeypatch.setenv("TXSTORE_S3_ACCESS", "env-k")
+    monkeypatch.setenv("TXSTORE_S3_SECRET", "env-s")
     with pytest.raises(StorageException, match=f"Missing S3 parameters: {name}$"):
         make_storage(_S3_URL, **{**_CREDS, name: ""})
 
@@ -153,13 +153,13 @@ def test_make_storage_s3_empty_bucket_acl_argument_is_not_unset(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """An explicit ``""`` wins over the variable and is rejected like any invalid value."""
-    monkeypatch.setenv("TX_STORE_S3_BUCKET_ACL", "private")
+    monkeypatch.setenv("TXSTORE_S3_BUCKET_ACL", "private")
     with pytest.raises(ValueError, match="invalid S3 bucket ACL"):
         make_storage(_S3_URL, **_CREDS, s3_bucket_acl="")  # type: ignore[arg-type]
 
 
 def test_make_storage_s3_ignores_unprefixed_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Only ``TX_STORE_*`` names are read; a generic ``S3_ACCESS`` is not a fallback."""
+    """Only ``TXSTORE_*`` names are read; a generic ``S3_ACCESS`` is not a fallback."""
     monkeypatch.setenv("S3_ACCESS", "k")
     monkeypatch.setenv("S3_SECRET", "s")
     with pytest.raises(StorageException, match="Missing S3 parameters"):
@@ -177,7 +177,7 @@ def test_make_storage_s3_default_acl_is_no_acl() -> None:
 
 
 def test_make_storage_s3_default_acl_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_S3_DEFAULT_ACL", "private")
+    monkeypatch.setenv("TXSTORE_S3_DEFAULT_ACL", "private")
     kwargs = _s3_init_kwargs(**_CREDS)
     assert kwargs["default_acl"] == "private"
     assert kwargs["bucket_acl"] is None
@@ -186,7 +186,7 @@ def test_make_storage_s3_default_acl_from_env(monkeypatch: pytest.MonkeyPatch) -
 def test_make_storage_s3_default_acl_argument_overrides_env(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TX_STORE_S3_DEFAULT_ACL", "private")
+    monkeypatch.setenv("TXSTORE_S3_DEFAULT_ACL", "private")
     assert _s3_init_kwargs(**_CREDS, s3_default_acl="authenticated-read")["default_acl"] == (
         "authenticated-read"
     )
@@ -196,7 +196,7 @@ def test_make_storage_s3_default_acl_argument_overrides_env(
 def test_make_storage_s3_no_acl_sends_no_acl(source: str, monkeypatch: pytest.MonkeyPatch) -> None:
     """`NO_ACL` sends no ACL on writes or on bucket creation."""
     if source == "env":
-        monkeypatch.setenv("TX_STORE_S3_DEFAULT_ACL", NO_ACL)
+        monkeypatch.setenv("TXSTORE_S3_DEFAULT_ACL", NO_ACL)
         kwargs = _s3_init_kwargs(**_CREDS)
     else:
         kwargs = _s3_init_kwargs(**_CREDS, s3_default_acl=NO_ACL)
@@ -227,7 +227,7 @@ def test_make_storage_s3_bucket_acl_from_argument_or_env(
     source: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     if source == "env":
-        monkeypatch.setenv("TX_STORE_S3_BUCKET_ACL", "private")
+        monkeypatch.setenv("TXSTORE_S3_BUCKET_ACL", "private")
         kwargs = _s3_init_kwargs(**_CREDS)
     else:
         kwargs = _s3_init_kwargs(**_CREDS, s3_bucket_acl="private")
@@ -238,8 +238,8 @@ def test_make_storage_s3_bucket_acl_from_argument_or_env(
 @pytest.mark.parametrize(
     ("name", "value"),
     [
-        pytest.param("TX_STORE_S3_DEFAULT_ACL", "world", id="default-acl"),
-        pytest.param("TX_STORE_S3_BUCKET_ACL", "aws-exec-read", id="bucket-acl-object-only"),
+        pytest.param("TXSTORE_S3_DEFAULT_ACL", "world", id="default-acl"),
+        pytest.param("TXSTORE_S3_BUCKET_ACL", "aws-exec-read", id="bucket-acl-object-only"),
     ],
 )
 def test_make_storage_s3_invalid_acl_env(
@@ -268,7 +268,7 @@ def test_make_storage_verify_ssl_resolution(
     argument: bool | None, env: str | None, expected: bool, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     if env is not None:
-        monkeypatch.setenv("TX_STORE_VERIFY_SSL", env)
+        monkeypatch.setenv("TXSTORE_VERIFY_SSL", env)
     assert _s3_init_kwargs(**_CREDS, verify_ssl=argument)["verify"] is expected
     with patch("txstore.factory.StorageHTTP", MagicMock()) as http:
         make_storage("https://example.com/debian", verify_ssl=argument)
@@ -364,6 +364,6 @@ def test_make_storage_does_not_warn_when_tls_verification_is_on(
 
 
 def test_make_storage_invalid_verify_ssl_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_VERIFY_SSL", "maybe")
-    with pytest.raises(ValueError, match="TX_STORE_VERIFY_SSL"):
+    monkeypatch.setenv("TXSTORE_VERIFY_SSL", "maybe")
+    with pytest.raises(ValueError, match="TXSTORE_VERIFY_SSL"):
         make_storage("fs:///tmp/repo")

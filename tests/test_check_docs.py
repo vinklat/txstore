@@ -173,8 +173,8 @@ _CONFIG = """# C
 
 | Variable | Read by | Type |
 | -- | -- | -- |
-| `TX_STORE_A` | x | y |
-| `TX_STORE_DOC_ONLY` | x | y |
+| `TXSTORE_A` | x | y |
+| `TXSTORE_DOC_ONLY` | x | y |
 """
 
 
@@ -182,13 +182,13 @@ def test_config_parity_both_directions(repo: Path) -> None:
     src = _write(
         repo,
         "src/txstore/f.py",
-        'env_str("TX_STORE_A")\n_env.env_bool("TX_STORE_CODE_ONLY")\nenv_int(OTHER)\n',
+        'env_str("TXSTORE_A")\n_env.env_bool("TXSTORE_CODE_ONLY")\nenv_int(OTHER)\n',
     )
     names = check_docs.parse_env_names([src])
-    assert names == {"TX_STORE_A": "src/txstore/f.py:1", "TX_STORE_CODE_ONLY": "src/txstore/f.py:2"}
+    assert names == {"TXSTORE_A": "src/txstore/f.py:1", "TXSTORE_CODE_ONLY": "src/txstore/f.py:2"}
     assert check_docs.check_config({"CONFIG.md": _CONFIG}, names) == [
-        "CONFIG.md:6: TX_STORE_DOC_ONLY is not read by the code",
-        "CONFIG.md: TX_STORE_CODE_ONLY (src/txstore/f.py:2) has no Variable row",
+        "CONFIG.md:6: TXSTORE_DOC_ONLY is not read by the code",
+        "CONFIG.md: TXSTORE_CODE_ONLY (src/txstore/f.py:2) has no Variable row",
     ]
 
 

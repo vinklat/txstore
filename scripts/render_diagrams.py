@@ -52,13 +52,18 @@ def _sources() -> list[Path]:
     return sorted((REPO_ROOT / "docs").rglob(f"{DIAGRAMS}/*.puml"))
 
 
-def digest(source: Path) -> str:
-    """SHA-256 of the render recipe: the image, the PlantUML arguments, and the source bytes."""
+def _recipe(data: bytes) -> str:
+    """SHA-256 of the render recipe: the image, the PlantUML arguments, and the source ``data``."""
     recipe = hashlib.sha256()
     for part in (IMAGE, *RENDER_ARGS):
         recipe.update(part.encode() + b"\0")
-    recipe.update(source.read_bytes())
+    recipe.update(data)
     return recipe.hexdigest()
+
+
+def digest(source: Path) -> str:
+    """SHA-256 of the render recipe of ``source`` as it is now."""
+    return _recipe(source.read_bytes())
 
 
 def stamp_line(recipe: str, version: str = PLANTUML_VERSION) -> str:
@@ -104,12 +109,12 @@ def check(sources: list[Path] | None = None) -> list[str]:
     return errors
 
 
-def _plantuml(source: Path) -> str:
-    """SVG text of ``source`` rendered by the pinned image; exit on any render failure."""
+def _plantuml(source: Path, data: bytes) -> str:
+    """SVG text of ``data``, read from ``source``, rendered by the pinned image; exit on failure."""
     try:
         result = subprocess.run(
             [*DOCKER_ARGS, IMAGE, *RENDER_ARGS],
-            input=source.read_bytes(),
+            input=data,
             capture_output=True,
             check=False,
         )
@@ -134,7 +139,9 @@ def render(force: bool = False, sources: list[Path] | None = None) -> int:
         if not force and problem(source) is None:
             continue
         svg = source.with_suffix(".svg")
-        svg.write_text(stamp(_plantuml(source), digest(source)), encoding="utf-8")
+        # One read feeds both the render and its stamp, so a save mid-render leaves the SVG stale.
+        data = source.read_bytes()
+        svg.write_text(stamp(_plantuml(source, data), _recipe(data)), encoding="utf-8")
         print(f"rendered {_relative(svg)}")
         rendered += 1
     return rendered

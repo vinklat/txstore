@@ -179,6 +179,22 @@ def test_render_runs_pinned_image_offline(repo: Path, monkeypatch: pytest.Monkey
     assert puml.with_suffix(".svg").read_text(encoding="utf-8").endswith(_SVG)
 
 
+def test_render_stamps_the_bytes_it_rendered(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    puml = _diagram(repo)
+    rendered = render_diagrams.digest(puml)
+    edited = _SOURCE.replace("hello", "bye")
+
+    def run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[bytes]:
+        puml.write_text(edited, encoding="utf-8")  # saved while Docker renders
+        return subprocess.CompletedProcess(args, 0, _SVG.encode(), b"")
+
+    monkeypatch.setattr(render_diagrams.subprocess, "run", run)
+    assert render_diagrams.render() == 1
+    svg = puml.with_suffix(".svg").read_text(encoding="utf-8")
+    assert svg.startswith(render_diagrams.stamp_line(rendered) + "\n")
+    assert render_diagrams.check() == [_STALE]
+
+
 def test_render_skips_current_unless_forced(repo: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     calls = _fake_docker(monkeypatch)
     _render(_diagram(repo))

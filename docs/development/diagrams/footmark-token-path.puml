@@ -1,0 +1,10 @@
+@startuml
+participant build_footmarks
+participant ObjectFootmark
+participant "_footmark_wire" as Wire
+
+build_footmarks -> ObjectFootmark : (transaction_id, op, timestamp) per op
+ObjectFootmark -> Wire : encode(FootmarkFields)
+Wire --> ObjectFootmark : protobuf wire bytes
+ObjectFootmark --> build_footmarks : base64, '/' → '@'
+@enduml

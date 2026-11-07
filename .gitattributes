@@ -1,0 +1,2 @@
+# Rendered diagrams → SETUP.md#diagrams: GitHub collapses their one-line diffs.
+docs/**/diagrams/*.svg linguist-generated=true

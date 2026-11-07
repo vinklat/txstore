@@ -25,7 +25,7 @@ definition.
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
 | `CONFIG.md` | `make_storage` and retention settings, `TX_STORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |
-| `SETUP.md` | Install, test, quality gates, dependency policy, release, upgrade notes |
+| `SETUP.md` | Install, test, quality gates, diagrams, dependency policy, release, upgrade notes |
 
 ## Task routing
 
@@ -48,7 +48,7 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | Contract / doc edit | Writing rules below → owning contract | `scripts/check_docs.py`, `SETUP.md` quality gates |
 | Release | `SETUP.md` release | `.github/workflows/release.yml`, `ROADMAP.md` phases |
 | Quality gate / CI change | `SETUP.md` quality gates | `.github/workflows/ci.yml` |
-| Developer explanation / diagram | `docs/development/` | Owning root contract |
+| Developer explanation / diagram | `docs/development/` | Owning root contract, `SETUP.md` diagrams |
 | User how-to / future behavior | `docs/guides/` / `ROADMAP.md` | Owning root contract before implementing |
 
 ## Agent workflow

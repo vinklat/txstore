@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, test, quality gates, dependency policy, release, and upgrade notes. Routing →
-[AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, test, quality gates, diagrams, dependency policy, release, and upgrade notes. Routing
+→ [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -38,13 +38,32 @@ on pull requests, weekly, and before each release; it checks the lockfile throug
 | Tests | `uv run pytest --cov`; the CI `test` job adds `--strict-backends`, the Debian job does not |
 | Lockfile | `uv lock --check` |
 | Contract docs | `uv run python scripts/check_docs.py` |
+| Diagrams | `uv run python scripts/render_diagrams.py --check` |
 | Build | `uv build` |
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TX_STORE_*` variables read, `EXCEPTIONS.md` parity with the
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
-markers in contracts, the `docs/*/README.md` indexes, the README version, and PyPI-only package
-sources.
+markers in contracts, the `docs/*/README.md` indexes, the README version, PyPI-only package sources,
+and the [diagram](#diagrams) fence and embed rules.
+
+## Diagrams
+
+GitHub does not render PlantUML, so diagrams are committed as SVG next to their source.
+
+| Rule | Detail |
+| -- | -- |
+| Source | One diagram per `docs/<dir>/diagrams/*.puml`, wrapped in a bare `@startuml`/`@enduml`. |
+| No URL | A source contains no URL: renders run offline. |
+| Embed | A document embeds each rendered `.svg` as an inline Markdown image with a bare relative path and an optional title; reference-style images and `<path>` destinations do not count. `check_docs.py` reports an SVG that no document displays that way. |
+| Fences | No document opens a `plantuml` or `puml` fence; `check_docs.py` reports one outside another fenced block. |
+| Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network. |
+| Force | `render_diagrams.py --force` renders every source, stale or not. |
+| Docker | Rendering needs Docker; `--check` does not. |
+| Stamp | Line 1 of each SVG carries the PlantUML version and a SHA-256 of the image, the PlantUML arguments, and the source. |
+| Check | `render_diagrams.py --check` reports, offline, a `.puml` under `docs/` outside a `diagrams/` directory, a URL in a source, a missing or stale SVG, and an SVG without its source. |
+| Upgrade | Changing `IMAGE` or `RENDER_ARGS` in the script marks every SVG stale; re-render and commit them together. |
+| Diff | `.gitattributes` marks rendered SVGs `linguist-generated`, so GitHub collapses their diffs. |
 
 ## Dependency policy
 

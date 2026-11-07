@@ -1,0 +1,18 @@
+@startuml
+participant StorageS3
+participant S3Client
+database Backend
+
+StorageS3 -> S3Client : object_put_metadata(key, new)
+S3Client -> Backend : HEAD key (metadata, headers, size)
+S3Client -> Backend : GET ACL (when no explicit acl)
+alt size < 5 GiB
+  S3Client -> Backend : CopyObject key → key, REPLACE, headers, ACL
+else size >= 5 GiB
+  S3Client -> Backend : CreateMultipartUpload (metadata, headers, ACL)
+  loop 256 MiB ranges
+    S3Client -> Backend : UploadPartCopy
+  end
+  S3Client -> Backend : CompleteMultipartUpload
+end
+@enduml

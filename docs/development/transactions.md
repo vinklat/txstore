@@ -17,31 +17,7 @@ and auto-prune sit. Behavior is owned by [STORAGE.md](../../STORAGE.md#transacti
 
 ## Commit with history
 
-```plantuml
-participant Caller
-participant "maybe_transaction" as MT
-participant TransactionHistory as TH
-participant FootmarkMixin as FM
-database Backend
-
-Caller -> MT : enter
-MT -> TH : history_lock(storage)
-TH -> FM : _obj_lock_identity()  ' claimed per thread: a nested acquire is refused
-TH -> FM : _obj_lock()  ' StorageFS: flock; StorageS3: _s3_lock.s3_lock
-FM -> Backend : flock / PutObject IfNoneMatch=* on .transactions.lock
-MT -> TH : load(), next_id()
-MT -> FM : transaction_begin(id)
-FM -> FM : build_footmarks(id, Timestamp.now())
-Caller -> FM : put("a.txt")
-FM -> Backend : write .a.txt.<PUT token>
-Caller -> MT : exit (no exception)
-MT -> FM : _commit_listed()  ' commit plus the hidden listing it took
-FM -> FM : _checked_footmarks(PUT, BACKUP), _checked_full(original) of every footmark, before any write
-FM -> Backend : copy PUT footmarks over originals, delete DELETE-marked originals
-MT -> TH : append(model, records) when the commit changed anything  ' saved as {id, timestamp}
-MT -> TH : _prune_locked(storage, retention, records, listing)  ' after an append, policy enabled
-MT -> TH : release lock
-```
+![Commit with history](diagrams/transactions-commit.svg)
 
 ### Details that matter
 
@@ -77,19 +53,7 @@ MT -> TH : release lock
 
 ## Discard
 
-```plantuml
-participant Caller
-participant "maybe_transaction" as MT
-participant TransactionHistory as TH
-participant FootmarkMixin as FM
-database Backend
-
-Caller -> MT : exception in the body
-MT -> FM : transaction_discard()
-FM -> Backend : list hidden objects, delete this transaction's footmarks
-MT -> TH : release lock
-MT -> Caller : re-raise the original exception
-```
+![Discard](diagrams/transactions-discard.svg)
 
 ### Details that matter
 
@@ -104,19 +68,7 @@ MT -> Caller : re-raise the original exception
 
 ## Revert
 
-```plantuml
-participant Caller
-participant TransactionHistory as TH
-participant FootmarkMixin as FM
-database Backend
-
-Caller -> TH : revert_last()
-TH -> TH : history_lock(), load() ' tokens rebuilt from {id, timestamp}
-TH -> FM : transaction_revert(last)
-FM -> FM : _checked_footmarks(BACKUP), _checked_full(original) of every PUT and BACKUP footmark, before any write
-FM -> Backend : delete new objects, restore BACKUP footmarks, remove footmarks
-TH -> Backend : save(records without last)
-```
+![Revert](diagrams/transactions-revert.svg)
 
 ### Details that matter
 

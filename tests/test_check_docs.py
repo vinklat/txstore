@@ -64,6 +64,14 @@ def test_anchors_report_missing_heading_and_file(repo: Path) -> None:
     ]
 
 
+def test_anchors_resolve_in_page_links_and_documents_under_check(repo: Path) -> None:
+    docs = {
+        "A.md": "# A\n\n## Rule\n[ok](#rule)\n[bad](#nope)\n[k](K.md#h)\n",
+        "K.md": "# K\n\n## H\n",
+    }
+    assert check_docs.check_anchors(docs) == ["A.md:5: broken anchor A.md#nope"]
+
+
 def test_anchors_ignore_fences_and_external_links(repo: Path) -> None:
     docs = {"A.md": "```\n[x](MISSING.md)\n```\n[w](https://example.com/x.md)\n"}
     assert check_docs.check_anchors(docs) == []
@@ -73,6 +81,77 @@ def test_unterminated_fence_is_reported() -> None:
     assert check_docs.check_fences({"A.md": "text\n```\ncode\n"}) == [
         "A.md:2: unterminated code fence hides the rest of the document"
     ]
+
+
+# Diagrams
+
+
+@pytest.mark.parametrize(
+    ("opener", "closer", "info"),
+    [
+        ("```plantuml", "```", "plantuml"),
+        ("~~~ puml", "~~~", "puml"),
+        ("````PlantUML {x}", "````", "PlantUML"),
+    ],
+)
+def test_diagram_fence_is_reported(opener: str, closer: str, info: str) -> None:
+    docs = {"A.md": f"# A\n\n{opener}\nA -> B\n{closer}\n"}
+    assert check_docs.check_diagram_fences(docs) == [
+        f"A.md:3: {info} fence; move it to docs/<dir>/diagrams/*.puml"
+    ]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param(
+            "````markdown\n```plantuml\nA\n```\n````\n```python\nx = 1\n```\n", id="longer"
+        ),
+        pytest.param("~~~\n```\n```plantuml\nA\n```\n~~~\n", id="other-character"),
+        pytest.param("````\n```\n```plantuml\nA\n```\n````\n", id="shorter-closer"),
+    ],
+)
+def test_diagram_fence_nested_in_another_block_is_an_example(text: str) -> None:
+    assert check_docs.check_diagram_fences({"A.md": text}) == []
+
+
+def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
+    _write(repo, "docs/dev/diagrams/shown.svg", "<svg/>")
+    _write(repo, "docs/dev/diagrams/hidden.svg", "<svg/>")
+    _write(repo, "docs/dev/logo.svg", "<svg/>")
+    docs = {
+        "docs/dev/page.md": "![Shown](diagrams/shown.svg#x)\n```\n![x](diagrams/hidden.svg)\n```\n"
+    }
+    assert check_docs.check_diagram_embeds(docs) == [
+        "docs/dev/diagrams/hidden.svg: diagram is embedded in no document"
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "embedded"),
+    [
+        pytest.param('![Flow](diagrams/flow.svg "Flow diagram")\n', True, id="double-title"),
+        pytest.param("![Flow](diagrams/flow.svg 'Flow diagram')\n", True, id="single-title"),
+        pytest.param("![Flow](diagrams/flow.svg (Flow diagram))\n", True, id="paren-title"),
+        pytest.param("<!-- x -->\n![Flow](diagrams/flow.svg)\n", True, id="after-comment"),
+        pytest.param("Run `x`, then:\n\n![Flow](diagrams/flow.svg)\n", True, id="after-code"),
+        pytest.param("[Flow](diagrams/flow.svg)\n", False, id="plain-link"),
+        pytest.param("![Flow](<diagrams/flow.svg>)\n", False, id="angle-brackets"),
+        pytest.param("![Flow][flow]\n\n[flow]: diagrams/flow.svg\n", False, id="reference-style"),
+        pytest.param("\\![Flow](diagrams/flow.svg)\n", False, id="escaped-bang"),
+        pytest.param("<!-- ![Flow](diagrams/flow.svg) -->\n", False, id="html-comment"),
+        pytest.param("<!--\n![Flow](diagrams/flow.svg)\n-->\n", False, id="html-comment-multiline"),
+        pytest.param("Write `![Flow](diagrams/flow.svg)` to embed.\n", False, id="inline-code"),
+        pytest.param("Write `` ![Flow](diagrams/flow.svg) `` here.\n", False, id="double-backtick"),
+        pytest.param("Write `see\n![Flow](diagrams/flow.svg)` here.\n", False, id="multiline-code"),
+    ],
+)
+def test_diagram_embeds_require_an_image(repo: Path, text: str, embedded: bool) -> None:
+    _write(repo, "docs/dev/diagrams/flow.svg", "<svg/>")
+    unembedded = ["docs/dev/diagrams/flow.svg: diagram is embedded in no document"]
+    assert check_docs.check_diagram_embeds({"docs/dev/page.md": text}) == (
+        [] if embedded else unembedded
+    )
 
 
 def test_code_references_resolve(repo: Path) -> None:

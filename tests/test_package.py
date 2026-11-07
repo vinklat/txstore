@@ -294,6 +294,7 @@ _COVERS_NOTHING = {
     "test_package",
     "test_harness",
     "test_check_docs",
+    "test_render_diagrams",
 }
 # Private names a file may take from a module it does not cover, each with its reason.
 _IMPORT_EXCEPTIONS: dict[str, dict[str, set[str]]] = {

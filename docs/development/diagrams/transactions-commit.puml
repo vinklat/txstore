@@ -1,0 +1,25 @@
+@startuml
+participant Caller
+participant "maybe_transaction" as MT
+participant TransactionHistory as TH
+participant FootmarkMixin as FM
+database Backend
+
+Caller -> MT : enter
+MT -> TH : history_lock(storage)
+TH -> FM : _obj_lock_identity()\nclaimed per thread: a nested acquire is refused
+TH -> FM : _obj_lock()\nStorageFS: flock; StorageS3: _s3_lock.s3_lock
+FM -> Backend : flock / PutObject IfNoneMatch=* on .transactions.lock
+MT -> TH : load(), next_id()
+MT -> FM : transaction_begin(id)
+FM -> FM : build_footmarks(id, Timestamp.now())
+Caller -> FM : put("a.txt")
+FM -> Backend : write .a.txt.<PUT token>
+Caller -> MT : exit (no exception)
+MT -> FM : _commit_listed()\ncommit plus the hidden listing it took
+FM -> FM : _checked_footmarks(PUT, BACKUP), _checked_full(original) of every footmark, before any write
+FM -> Backend : copy PUT footmarks over originals, delete DELETE-marked originals
+MT -> TH : append(model, records) when the commit changed anything\nsaved as {id, timestamp}
+MT -> TH : _prune_locked(storage, retention, records, listing)\nafter an append, policy enabled
+MT -> TH : release lock
+@enduml

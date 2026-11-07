@@ -1,0 +1,13 @@
+@startuml
+participant Caller
+participant "maybe_transaction" as MT
+participant TransactionHistory as TH
+participant FootmarkMixin as FM
+database Backend
+
+Caller -> MT : exception in the body
+MT -> FM : transaction_discard()
+FM -> Backend : list hidden objects, delete this transaction's footmarks
+MT -> TH : release lock
+MT -> Caller : re-raise the original exception
+@enduml

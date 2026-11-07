@@ -5,7 +5,6 @@
 | Phase | Status | Feature | Notes |
 | -- | -- | -- | -- |
 | 0.1.0 | ✅ | Initial public release | fs, S3, HTTP, and null backends; transactions, history, and retention; protobuf-free footmark codec; configuration by arguments or `TX_STORE_*` variables; Debian testing floors |
-| 0.1.1 | ✅ | Env prefix rename | Variables renamed from `TX_STORE_*` to `TXSTORE_*`; no fallback to the old names |
 | 0.2.0 | ⏳ | Debian package for forky | `python3-txstore` built with `dh-python` and `pybuild-plugin-pyproject`, autopkgtest running pytest, DEP-14 `debian/latest` branch, `debian/watch` on GitHub `vX.Y.Z` tags, `uversionmangle` mapping a PEP 440 suffix to `~` (`0.2.0rc1` → `0.2.0~rc1`) so a pre-release sorts before its final; ITP, sponsor or Debian Python Team, upload to unstable, migrate to testing before the forky freeze |
 | 1.0.0 | ⏳ | Stable API | Freeze the façade before the forky freeze so forky ships an API maintained for the whole release |
 

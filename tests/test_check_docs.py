@@ -123,8 +123,27 @@ def test_diagram_embeds_report_unlinked_svg(repo: Path) -> None:
         "docs/dev/page.md": "![Shown](diagrams/shown.svg#x)\n```\n![x](diagrams/hidden.svg)\n```\n"
     }
     assert check_docs.check_diagram_embeds(docs) == [
-        "docs/dev/diagrams/hidden.svg: diagram is linked from no document"
+        "docs/dev/diagrams/hidden.svg: diagram is embedded in no document"
     ]
+
+
+@pytest.mark.parametrize(
+    ("text", "embedded"),
+    [
+        pytest.param('![Flow](diagrams/flow.svg "Flow diagram")\n', True, id="double-title"),
+        pytest.param("![Flow](diagrams/flow.svg 'Flow diagram')\n", True, id="single-title"),
+        pytest.param("![Flow](diagrams/flow.svg (Flow diagram))\n", True, id="paren-title"),
+        pytest.param("![Flow](<diagrams/flow.svg>)\n", True, id="angle-brackets"),
+        pytest.param("[Flow](diagrams/flow.svg)\n", False, id="plain-link"),
+        pytest.param("Write `![Flow](diagrams/flow.svg)` to embed.\n", False, id="inline-code"),
+    ],
+)
+def test_diagram_embeds_require_an_image(repo: Path, text: str, embedded: bool) -> None:
+    _write(repo, "docs/dev/diagrams/flow.svg", "<svg/>")
+    unembedded = ["docs/dev/diagrams/flow.svg: diagram is embedded in no document"]
+    assert check_docs.check_diagram_embeds({"docs/dev/page.md": text}) == (
+        [] if embedded else unembedded
+    )
 
 
 def test_code_references_resolve(repo: Path) -> None:

@@ -12,7 +12,7 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
   and every backticked ``*Exception`` name in any document is a defined class;
 - no document leaves a code fence open, which would hide every later line from every check above;
 - no document opens a ``plantuml`` or ``puml`` fence, which GitHub does not render, and every
-  ``docs/**/diagrams/*.svg`` is linked from a document (SETUP.md diagrams);
+  ``docs/**/diagrams/*.svg`` is embedded as a Markdown image in a document (SETUP.md diagrams);
 - prose lines stay within 100 columns (table rows, fenced blocks, lines carrying a URL, and
   single-token lines are exempt);
 - every table row has as many cells as its header;
@@ -55,6 +55,10 @@ DIAGRAM_FENCES = frozenset({"plantuml", "puml"})
 FENCE_RE = re.compile(r"^\s{0,3}(`{3,}|~{3,})\s*([^\s`]*)")
 HEADING_RE = re.compile(r"^(#+)\s+(.*?)\s*$")
 LINK_RE = re.compile(r"\]\(([^)\s]*)\)")
+# ``![alt](dest)`` or ``![alt](<dest>)``, with an optional "title", 'title', or (title).
+IMAGE_RE = re.compile(
+    r"!\[[^\]]*\]\(\s*(?:<([^>\s]+)>|([^)\s]+))(?:\s+(?:\"[^\"]*\"|'[^']*'|\([^)]*\)))?\s*\)"
+)
 EXTERNAL_RE = re.compile(r"^(?:[a-z][a-z0-9+.-]*:)")
 TABLE_SEP_RE = re.compile(r"^\|[\s:|-]+\|?\s*$")
 CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
@@ -144,6 +148,16 @@ def _link_targets(text: str) -> list[tuple[int, str]]:
         for lineno, line in _prose_lines(text)
         for match in LINK_RE.finditer(line)
         if match.group(1) and not EXTERNAL_RE.match(match.group(1))
+    ]
+
+
+def _image_targets(text: str) -> list[str]:
+    """Target of each relative Markdown image outside fenced blocks and inline code."""
+    return [
+        target
+        for _, line in _prose_lines(text)
+        for match in IMAGE_RE.finditer(INLINE_CODE_RE.sub("", line))
+        if not EXTERNAL_RE.match(target := match.group(1) or match.group(2))
     ]
 
 
@@ -240,17 +254,17 @@ def check_diagram_fences(docs: dict[str, str]) -> list[str]:
 
 
 def check_diagram_embeds(docs: dict[str, str]) -> list[str]:
-    """Every rendered ``docs/**/diagrams/*.svg`` is the target of a link from some document."""
-    linked = {
+    """Every rendered ``docs/**/diagrams/*.svg`` is embedded as a Markdown image in a document."""
+    embedded = {
         _target(name, path, docs)
         for name, text in docs.items()
-        for _, target in _link_targets(text)
+        for target in _image_targets(text)
         if (path := target.partition("#")[0])
     }
     return [
-        f"{relative}: diagram is linked from no document"
+        f"{relative}: diagram is embedded in no document"
         for svg in sorted((REPO_ROOT / "docs").rglob("diagrams/*.svg"))
-        if (relative := svg.relative_to(REPO_ROOT).as_posix()) not in linked
+        if (relative := svg.relative_to(REPO_ROOT).as_posix()) not in embedded
     ]
 
 

@@ -104,7 +104,7 @@ class HistoryRetention:
     def from_env(
         cls, *, keep: int | None = None, max_age_days: int | None = None
     ) -> HistoryRetention:
-        """Build the policy from arguments, then ``TX_STORE_HISTORY_*`` variables, then defaults.
+        """Build the policy from arguments, then ``TXSTORE_HISTORY_*`` variables, then defaults.
 
         Args:
             keep: Newest transactions never pruned.
@@ -117,9 +117,9 @@ class HistoryRetention:
             ValueError: If a value or variable is not an integer or is out of range.
         """
         if keep is None:
-            keep = env_int("TX_STORE_HISTORY_KEEP")
+            keep = env_int("TXSTORE_HISTORY_KEEP")
         if max_age_days is None:
-            max_age_days = env_int("TX_STORE_HISTORY_MAX_AGE_DAYS")
+            max_age_days = env_int("TXSTORE_HISTORY_MAX_AGE_DAYS")
         return cls(
             keep=HISTORY_KEEP_DEFAULT if keep is None else keep,
             max_age_days=HISTORY_MAX_AGE_DAYS_DEFAULT if max_age_days is None else max_age_days,

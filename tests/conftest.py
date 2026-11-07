@@ -13,14 +13,14 @@ from helpers.s3 import s3_bucket
 from txstore import StorageS3
 
 # Variables that change `make_storage` / `HistoryRetention.from_env` resolution.
-_TX_STORE_VARS = (
-    "TX_STORE_VERIFY_SSL",
-    "TX_STORE_S3_ACCESS",
-    "TX_STORE_S3_SECRET",
-    "TX_STORE_S3_DEFAULT_ACL",
-    "TX_STORE_S3_BUCKET_ACL",
-    "TX_STORE_HISTORY_KEEP",
-    "TX_STORE_HISTORY_MAX_AGE_DAYS",
+_TXSTORE_VARS = (
+    "TXSTORE_VERIFY_SSL",
+    "TXSTORE_S3_ACCESS",
+    "TXSTORE_S3_SECRET",
+    "TXSTORE_S3_DEFAULT_ACL",
+    "TXSTORE_S3_BUCKET_ACL",
+    "TXSTORE_HISTORY_KEEP",
+    "TXSTORE_HISTORY_MAX_AGE_DAYS",
 )
 
 
@@ -39,9 +39,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
 
 @pytest.fixture(autouse=True)
-def _isolate_tx_store_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Start every test with no ``TX_STORE_*`` variable set, whatever the caller's shell holds."""
-    for name in _TX_STORE_VARS:
+def _isolate_txstore_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start every test with no ``TXSTORE_*`` variable set, whatever the caller's shell holds."""
+    for name in _TXSTORE_VARS:
         monkeypatch.delenv(name, raising=False)
 
 

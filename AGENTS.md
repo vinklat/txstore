@@ -23,7 +23,7 @@ definition.
 | `STORAGE.md` | Storage ABI, backends, construction, transactions, footmarks and their wire format, timestamps, history, S3 ACL and metadata rules, digests |
 | `VALIDATION.md` | Input constraints at the URL, path, configuration, and retention boundaries |
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
-| `CONFIG.md` | `make_storage` and retention settings, `TX_STORE_*` variables, defaults, secrets |
+| `CONFIG.md` | `make_storage` and retention settings, `TXSTORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |
 | `SETUP.md` | Install, test, quality gates, diagrams, dependency policy, release, upgrade notes |
 
@@ -39,7 +39,7 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | S3 ACL / metadata | `STORAGE.md` S3 sections | `VALIDATION.md` canned ACLs, `CONFIG.md` |
 | URL / path rule | `VALIDATION.md` | `EXCEPTIONS.md`, `TESTING.md` |
 | Exception | `EXCEPTIONS.md` | Owning contract of the condition |
-| Argument / `TX_STORE_*` variable | `CONFIG.md` | `VALIDATION.md` environment values, `src/txstore/_env.py` |
+| Argument / `TXSTORE_*` variable | `CONFIG.md` | `VALIDATION.md` environment values, `src/txstore/_env.py` |
 | Digest | `STORAGE.md` digests | `src/txstore/hexdigest.py` |
 | Import boundary | `STRUCTURE.md` dependencies | `tests/test_package.py`, `STYLE.md` |
 | Dependency change | `SETUP.md` dependency policy | `STRUCTURE.md` dependencies, `tests/test_package.py`, `.github/debian-test.sh` |

@@ -30,7 +30,7 @@ ids that never expire:
 from txstore import HistoryRetention
 
 policy = HistoryRetention(keep=20, max_age_days=90)  # explicit
-policy = HistoryRetention.from_env()  # TX_STORE_HISTORY_* or the defaults
+policy = HistoryRetention.from_env()  # TXSTORE_HISTORY_* or the defaults
 history.prune(policy)  # PruneResult(records, footmark_paths, orphans)
 history.prune(policy, orphans=True, dry_run=True)  # also list leftover footmarks, change nothing
 ```
@@ -62,7 +62,7 @@ root (on S3, with the same endpoint spelling) → [STORAGE.md](../../STORAGE.md#
 | Error | When |
 | -- | -- |
 | `StorageException` | Malformed history file or record, lock timeout or failure, a nested lock on the same root, revert on a non-transactional backend. |
-| `ValueError` | `keep` or `max_age_days` out of range, or a non-integer `TX_STORE_HISTORY_*` value → [VALIDATION.md](../../VALIDATION.md#history-retention). |
+| `ValueError` | `keep` or `max_age_days` out of range, or a non-integer `TXSTORE_HISTORY_*` value → [VALIDATION.md](../../VALIDATION.md#history-retention). |
 
 ## FAQ
 

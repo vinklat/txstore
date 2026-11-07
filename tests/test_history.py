@@ -1199,16 +1199,16 @@ def test_retention_from_env_falls_back_to_defaults() -> None:
 
 
 def test_retention_from_env_reads_variables(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_HISTORY_KEEP", "3")
-    monkeypatch.setenv("TX_STORE_HISTORY_MAX_AGE_DAYS", "7")
+    monkeypatch.setenv("TXSTORE_HISTORY_KEEP", "3")
+    monkeypatch.setenv("TXSTORE_HISTORY_MAX_AGE_DAYS", "7")
     retention = HistoryRetention.from_env()
     assert (retention.keep, retention.max_age_days) == (3, 7)
     assert retention.enabled
 
 
 def test_retention_from_env_arguments_override_variables(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TX_STORE_HISTORY_KEEP", "3")
-    monkeypatch.setenv("TX_STORE_HISTORY_MAX_AGE_DAYS", "7")
+    monkeypatch.setenv("TXSTORE_HISTORY_KEEP", "3")
+    monkeypatch.setenv("TXSTORE_HISTORY_MAX_AGE_DAYS", "7")
     retention = HistoryRetention.from_env(keep=5, max_age_days=0)
     assert (retention.keep, retention.max_age_days) == (5, 0)
     assert not retention.enabled
@@ -1217,8 +1217,8 @@ def test_retention_from_env_arguments_override_variables(monkeypatch: pytest.Mon
 def test_retention_from_env_arguments_skip_invalid_variables(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("TX_STORE_HISTORY_KEEP", "many")
-    monkeypatch.setenv("TX_STORE_HISTORY_MAX_AGE_DAYS", "old")
+    monkeypatch.setenv("TXSTORE_HISTORY_KEEP", "many")
+    monkeypatch.setenv("TXSTORE_HISTORY_MAX_AGE_DAYS", "old")
     assert HistoryRetention.from_env(keep=5, max_age_days=0) == HistoryRetention(
         keep=5, max_age_days=0
     )
@@ -1227,9 +1227,9 @@ def test_retention_from_env_arguments_skip_invalid_variables(
 @pytest.mark.parametrize(
     ("name", "value", "match"),
     [
-        pytest.param("TX_STORE_HISTORY_KEEP", "many", "expected an integer", id="keep-text"),
-        pytest.param("TX_STORE_HISTORY_KEEP", "0", "keep must be", id="keep-zero"),
-        pytest.param("TX_STORE_HISTORY_MAX_AGE_DAYS", "-1", "max age must be", id="age-negative"),
+        pytest.param("TXSTORE_HISTORY_KEEP", "many", "expected an integer", id="keep-text"),
+        pytest.param("TXSTORE_HISTORY_KEEP", "0", "keep must be", id="keep-zero"),
+        pytest.param("TXSTORE_HISTORY_MAX_AGE_DAYS", "-1", "max age must be", id="age-negative"),
     ],
 )
 def test_retention_from_env_rejects_invalid_variables(

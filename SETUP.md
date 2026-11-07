@@ -42,7 +42,7 @@ on pull requests, weekly, and before each release; it checks the lockfile throug
 | Build | `uv build` |
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
-code, `CONFIG.md` parity with the `TX_STORE_*` variables read, `EXCEPTIONS.md` parity with the
+code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
 markers in contracts, the `docs/*/README.md` indexes, the README version, PyPI-only package sources,
 and the [diagram](#diagrams) fence and embed rules.

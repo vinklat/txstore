@@ -1,7 +1,7 @@
 # Backends
 
 The four storage backends, how a URL picks one, and how to configure them with arguments or
-`TX_STORE_*` environment variables.
+`TXSTORE_*` environment variables.
 
 ## What each backend does
 
@@ -18,20 +18,20 @@ Construct it directly: `StorageNull()`.
 ## Building a storage
 
 `make_storage(url, ...)` picks the backend from the URL scheme. An omitted or `None` setting falls
-back to its `TX_STORE_*` variable, where one exists, then to its default:
+back to its `TXSTORE_*` variable, where one exists, then to its default:
 
 ```python
 from txstore import make_storage
 
 fs = make_storage("fs:///srv/data", create_path=True)
 s3 = make_storage(
-    "s3://s3.example.com/releases/stable",  # keys from TX_STORE_S3_ACCESS / TX_STORE_S3_SECRET
+    "s3://s3.example.com/releases/stable",  # keys from TXSTORE_S3_ACCESS / TXSTORE_S3_SECRET
     s3_default_acl="private",
 )
 web = make_storage("https://downloads.example.com/releases", verify_ssl=True)
 ```
 
-Arguments, `TX_STORE_*` variables, and defaults → [CONFIG.md](../../CONFIG.md#storage-construction).
+Arguments, `TXSTORE_*` variables, and defaults → [CONFIG.md](../../CONFIG.md#storage-construction).
 
 Percent-encode `/`, `?`, `#`, `@`, and non-ASCII characters in credentials in an `http(s)` URL: an
 unencoded `/` can parse part of a password as the host and path instead of raising →

@@ -6,7 +6,7 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
 - every ``[text](target)`` in root ``*.md`` and ``docs/**/*.md`` resolves relative to the linking
   document: a ``.md`` target must exist and its ``#anchor`` must be a heading slug; any other
   relative file target must exist. External links, ``]()``, and fenced code blocks are ignored;
-- ``CONFIG.md`` environment-variable rows equal the ``TX_STORE_*`` names the source passes to the
+- ``CONFIG.md`` environment-variable rows equal the ``TXSTORE_*`` names the source passes to the
   ``_env`` helpers, in both directions;
 - the ``EXCEPTIONS.md`` exception table equals the ``class *Exception`` definitions in the source,
   and every backticked ``*Exception`` name in any document is a defined class;
@@ -70,7 +70,7 @@ README_VERSION_RE = re.compile(r"Current version: \*\*([^*]+)\*\*")
 TODO_RE = re.compile(r"\b(?:TODO|FIXME|XXX)\b")
 URL_RE = re.compile(r"https?://")
 CODE_REF_RE = re.compile(r"\b([A-Z][A-Z]+\.md)#([a-z0-9-]+)")
-ENV_NAME_RE = re.compile(r"^`(TX_STORE_[A-Z0-9_]+)`$")
+ENV_NAME_RE = re.compile(r"^`(TXSTORE_[A-Z0-9_]+)`$")
 EXCEPTION_TOKEN_RE = re.compile(r"`([A-Z][A-Za-z0-9]*Exception)`")
 EXCEPTION_CELL_RE = re.compile(r"^`([A-Z][A-Za-z0-9]*Exception)`$")
 
@@ -273,7 +273,7 @@ def check_diagram_embeds(docs: dict[str, str]) -> list[str]:
 
 
 def parse_env_names(sources: list[Path]) -> dict[str, str]:
-    """``TX_STORE_*`` literals passed to an ``_env`` helper → first ``file:line`` reading them."""
+    """``TXSTORE_*`` literals passed to an ``_env`` helper → first ``file:line`` reading them."""
     names: dict[str, str] = {}
     for path in sources:
         for node in ast.walk(_parse(path)):
@@ -286,7 +286,7 @@ def parse_env_names(sources: list[Path]) -> dict[str, str]:
                 called in ENV_HELPERS
                 and isinstance(arg, ast.Constant)
                 and isinstance(arg.value, str)
-                and arg.value.startswith("TX_STORE_")
+                and arg.value.startswith("TXSTORE_")
             ):
                 where = f"{path.relative_to(REPO_ROOT).as_posix()}:{node.lineno}"
                 names.setdefault(arg.value, where)
@@ -294,7 +294,7 @@ def parse_env_names(sources: list[Path]) -> dict[str, str]:
 
 
 def check_config(docs: dict[str, str], code_names: dict[str, str]) -> list[str]:
-    """``CONFIG.md`` variable rows equal the ``TX_STORE_*`` names the code reads."""
+    """``CONFIG.md`` variable rows equal the ``TXSTORE_*`` names the code reads."""
     documented: dict[str, int] = {}
     for _, header, rows in _tables(docs["CONFIG.md"]):
         if not header or header[0] != "Variable":

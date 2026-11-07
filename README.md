@@ -5,7 +5,7 @@ buckets, and HTTP servers, selected by URL. Read, write, list, and stream object
 with the same calls, and on the filesystem and S3, optionally group writes into a transaction you
 commit, discard, or revert as one unit.
 
-Current version: **0.1.0**. Planned work → [ROADMAP.md](ROADMAP.md).
+Current version: **0.1.1**. Planned work → [ROADMAP.md](ROADMAP.md).
 
 ## Capabilities
 
@@ -22,7 +22,7 @@ Current version: **0.1.0**. Planned work → [ROADMAP.md](ROADMAP.md).
 - Streamed transfers between storages that return MD5, SHA-1, SHA-256, and SHA-512 digests in one
   pass.
 - S3 canned-ACL preservation across transactional copies and metadata rewrites.
-- Configuration by keyword arguments or `TX_STORE_*` environment variables; no CLI coupling.
+- Configuration by keyword arguments or `TXSTORE_*` environment variables; no CLI coupling.
 
 ## Quick start
 
@@ -92,7 +92,7 @@ assert not storage.exists("manifest.json")
 On S3, pass the endpoint and bucket in the URL and the credentials as arguments or variables:
 
 ```bash
-export TX_STORE_S3_ACCESS=... TX_STORE_S3_SECRET=...
+export TXSTORE_S3_ACCESS=... TXSTORE_S3_SECRET=...
 ```
 
 ```python

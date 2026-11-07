@@ -1,0 +1,71 @@
+@startuml
+abstract class Storage {
+  metrics: StorageMetrics
+  + put(path, data, [metadata], [acl])
+  + transfer(path_src, storage_dst, [path_dst], [acl])
+  -- abstract --
+  + list() / get(path) / get_stream(path) / exists(path)
+  + put_stream(path, stream, [metadata], [acl])
+  + get_metadata(path) / add_metadata(path, metadata, [acl])
+  + delete(path) / delete_metadata(path) / delete_metadata_fields(path, keys)
+  + copy(path_src, path_dst) / move(path_src, path_dst)
+  + mkdir(path) / rmdir(path)
+  + format() / get_type()
+}
+
+abstract class FootmarkMixin {
+  transaction_id: int
+  _active: TransactionModel | None
+  + in_transaction() / transaction_begin() / transaction_commit()
+  + transaction_revert(transaction) / transaction_discard()
+  + hidden_objects()
+  -- overlay --
+  # _read_target / _source_target / _overlay_exists / _overlay_list
+  # _stage_write / _stage_delete / _metadata_target / _copy_object / _move_object
+  # _commit_listed() / _reclaim_footmark()
+  -- abstract primitives --
+  # _obj_full / _obj_iter_rel_all / _obj_exists / _obj_copy / _obj_delete / _obj_touch
+  # _obj_lock / _obj_lock_identity / _obj_get_reserved / _obj_put_reserved
+  -- primitives with defaults --
+  # _obj_same / _obj_rename / _obj_prepare_parent / _obj_checked_footmark
+  # _obj_reclaim_delete_many / _obj_check_reserved / _obj_check_transfer
+}
+
+class ReclaimMixin {
+  + find_transaction_footmarks(models) / transaction_forget(models)
+  + find_orphaned_footmarks(known) / transaction_forget_orphans(known)
+  # _delete_footmark_paths(rels, context)
+}
+
+class ReadOnlyStorageMixin
+class WriteOnlyStorageMixin
+class TransactionNotSupportedMixin
+
+class StorageFS {
+  base_dir: str
+}
+class StorageS3 {
+  endpoint: str
+  bucket: str
+  prefix: str | None
+  _s3_client: S3Client
+  _acls: dict[str, str]
+  + create_bucket() / delete_bucket() / verify_public(path)
+}
+class StorageHTTP {
+  base_url: str
+}
+class StorageNull
+
+Storage <|-- StorageFS
+Storage <|-- StorageS3
+Storage <|-- StorageHTTP
+Storage <|-- StorageNull
+ReclaimMixin <|-- FootmarkMixin
+FootmarkMixin <|-- StorageFS
+FootmarkMixin <|-- StorageS3
+ReadOnlyStorageMixin <|-- StorageHTTP
+WriteOnlyStorageMixin <|-- StorageNull
+TransactionNotSupportedMixin <|-- StorageHTTP
+TransactionNotSupportedMixin <|-- StorageNull
+@enduml

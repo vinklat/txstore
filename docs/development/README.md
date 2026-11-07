@@ -14,8 +14,10 @@ behavior, and the guide it complements. Sections follow in this order: `Code map
 with a `Sibling pages:` bullet. [class.md](class.md) is diagrams plus commentary rather than a flow
 and says so in its preamble.
 
-Diagram conventions: PlantUML only. A sequence diagram shows one call path; an activity diagram
-shows a decision tree. The backend participant is `database Backend` (filesystem or bucket).
+Diagram conventions: PlantUML only, one source per `diagrams/<page>-<name>.puml` embedded as the
+rendered `.svg`; rendering and the freshness check → [SETUP.md](../../SETUP.md#diagrams). A
+sequence diagram shows one call path; an activity diagram shows a decision tree. The backend
+participant is `database Backend` (filesystem or bucket).
 
 ## Pages
 

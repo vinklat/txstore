@@ -38,6 +38,7 @@ on pull requests, weekly, and before each release; it checks the lockfile throug
 | Tests | `uv run pytest --cov`; the CI `test` job adds `--strict-backends`, the Debian job does not |
 | Lockfile | `uv lock --check` |
 | Contract docs | `uv run python scripts/check_docs.py` |
+| Diagrams | `uv run python scripts/render_diagrams.py --check` |
 | Build | `uv build` |
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
@@ -45,6 +46,18 @@ code, `CONFIG.md` parity with the `TX_STORE_*` variables read, `EXCEPTIONS.md` p
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
 markers in contracts, the `docs/*/README.md` indexes, the README version, and PyPI-only package
 sources.
+
+## Diagrams
+
+GitHub does not render PlantUML, so diagrams are committed as SVG next to their source.
+
+| Rule | Detail |
+| -- | -- |
+| Source | One diagram per `docs/<dir>/diagrams/<page>-<name>.puml`, wrapped in a bare `@startuml`/`@enduml`; no `plantuml` fence in any document. |
+| Embed | The page embeds the sibling `.svg` as a Markdown image whose alt text is the section heading. |
+| Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image; `--force` renders all. Needs Docker. |
+| Stamp | Each SVG carries the PlantUML version and the SHA-256 of its source; `--check` and `tests/test_render_diagrams.py` compare it offline. |
+| Upgrade | Raising the pinned image marks every SVG stale; re-render and commit them together. |
 
 ## Dependency policy
 

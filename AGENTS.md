@@ -48,7 +48,7 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | Contract / doc edit | Writing rules below → owning contract | `scripts/check_docs.py`, `SETUP.md` quality gates |
 | Release | `SETUP.md` release | `.github/workflows/release.yml`, `ROADMAP.md` phases |
 | Quality gate / CI change | `SETUP.md` quality gates | `.github/workflows/ci.yml` |
-| Developer explanation / diagram | `docs/development/` | Owning root contract |
+| Developer explanation / diagram | `docs/development/` | Owning root contract, `SETUP.md` diagrams |
 | User how-to / future behavior | `docs/guides/` / `ROADMAP.md` | Owning root contract before implementing |
 
 ## Agent workflow

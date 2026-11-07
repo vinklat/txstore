@@ -1,0 +1,13 @@
+@startuml
+participant Caller
+participant TransactionHistory as TH
+participant FootmarkMixin as FM
+database Backend
+
+Caller -> TH : revert_last()
+TH -> TH : history_lock(), load() ' tokens rebuilt from {id, timestamp}
+TH -> FM : transaction_revert(last)
+FM -> FM : _checked_footmarks(BACKUP), _checked_full(original) of every PUT and BACKUP footmark, before any write
+FM -> Backend : delete new objects, restore BACKUP footmarks, remove footmarks
+TH -> Backend : save(records without last)
+@enduml

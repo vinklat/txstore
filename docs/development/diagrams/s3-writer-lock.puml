@@ -1,0 +1,27 @@
+@startuml
+participant StorageS3
+participant "_s3_lock" as Lock
+participant S3Client
+database Backend
+
+StorageS3 -> Lock : _obj_lock() → s3_lock(client, bucket, key, _reserved_acl())
+loop until acquired or the acquire timeout
+  Lock -> S3Client : object_put_if_absent(body {owner, expires_at})
+  S3Client -> Backend : PutObject IfNoneMatch=*
+  alt 412 / 409
+    Lock -> S3Client : object_get_with_etag()
+    S3Client -> Backend : GetObject (body + ETag)
+    alt 403
+      Lock -> StorageS3 : StorageException (acquire aborted)
+    else body carries this acquire's owner id
+      Lock -> Lock : held: a replayed write whose first attempt committed
+    else body missing, corrupt, or past TTL
+      Lock -> S3Client : object_put_if_match(etag)
+      S3Client -> Backend : PutObject IfMatch=<ETag>
+    end
+  end
+end
+StorageS3 -> StorageS3 : critical section
+Lock -> S3Client : object_delete_if_match(own ETag)
+S3Client -> Backend : DeleteObject IfMatch=<ETag>
+@enduml

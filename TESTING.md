@@ -32,6 +32,7 @@ not copied here.
 | Schemes | Every URL-routable storage scheme has direct backend tests. |
 | Public methods | Every public function and method has a success case; every one that raises has a case per raising condition → [EXCEPTIONS.md](EXCEPTIONS.md#rules). |
 | Contract docs | `tests/test_check_docs.py` runs `scripts/check_docs.py` against the repository. |
+| Diagrams | `tests/test_render_diagrams.py` fails when a committed SVG is missing, orphaned, or stale against its `.puml` → [SETUP.md](SETUP.md#diagrams). |
 | Package contracts | `tests/test_package.py` → [Package contracts](#package-contracts). |
 
 ## Required coverage
@@ -80,6 +81,7 @@ alone. Files that cover a contract surface rather than one module:
 | `test_fs_transactions.py`, `test_s3_transactions.py` | Backend-specific transaction behavior: symlink confinement and the per-path reclaim; ACL carry-over, the batched S3 reclaim, and a locked `prune`. |
 | `test_package.py` | Package contracts → [Package contracts](#package-contracts). |
 | `test_check_docs.py` | `scripts/check_docs.py` checks and a clean run on the repository. |
+| `test_render_diagrams.py` | `scripts/render_diagrams.py` stamp, checks, and render, and a clean check on the repository. |
 | `test_harness.py` | The `--strict-backends` switch of `tests/helpers/backends.py` and its `tests/conftest.py` wiring. |
 
 ## Maintenance

@@ -25,8 +25,10 @@ Owns: directories, module ownership, the public façade, and internal import dir
 | `src/txstore/_capabilities.py`, `_fs_paths.py`, `_reserved.py` | Capability stubs, FS path confinement and xattrs, reserved root names. |
 | `tests/` | Tests, `conftest.py` fixtures, and `helpers/` → [TESTING.md](TESTING.md#file-layout). |
 | `scripts/check_docs.py` | Contract and docs parity checker → [SETUP.md](SETUP.md#quality-gates). |
+| `scripts/render_diagrams.py` | PlantUML renderer and freshness checker → [SETUP.md](SETUP.md#diagrams). |
 | `docs/guides/` | Non-canonical user guides. |
 | `docs/development/` | Non-canonical contributor explanations and diagrams. |
+| `docs/development/diagrams/` | PlantUML sources (`*.puml`) and their committed SVG renders → [SETUP.md](SETUP.md#diagrams). |
 | `docs/reference/` | Non-canonical reference artifacts, including `footmark.proto`. |
 | `.github/` | `workflows/ci.yml` → [SETUP.md](SETUP.md#quality-gates); `debian-test.sh` → [SETUP.md](SETUP.md#dependency-policy); `workflows/release.yml` and `build-constraints.txt` → [SETUP.md](SETUP.md#release). |
 

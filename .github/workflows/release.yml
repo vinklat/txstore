@@ -1,0 +1,114 @@
+# Release → SETUP.md#release. Gates, build, TestPyPI, PyPI (trusted publishing), GitHub release.
+name: Release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    needs: gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, so the next step can see whether the tag is on main.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Tag is on main
+        run: |
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::tag $GITHUB_REF_NAME is not on main"
+            exit 1
+          fi
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          # The published artifacts never restore a cache another workflow could have written.
+          enable-cache: false
+      - name: Tag matches the package version
+        run: |
+          version="$(uv version --short)"
+          if [ "${GITHUB_REF_NAME#v}" != "$version" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pyproject.toml version $version"
+            exit 1
+          fi
+      - name: Point README links at this tag on GitHub (PyPI description only)
+        run: >-
+          perl -pi -e
+          's{\]\((?!https?:|mailto:|#)([^)\s]+)\)}{](https://github.com/$ENV{GITHUB_REPOSITORY}/blob/$ENV{GITHUB_REF_NAME}/$1)}g'
+          README.md
+      # Hash-pinned build backend: the published artifacts never pick up a new hatchling unreviewed.
+      - run: uv build --build-constraints .github/build-constraints.txt --require-hashes
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+      # Checks run after the upload, so no tool they fetch can alter the published files.
+      - name: Check the distributions
+        run: |
+          if unzip -p dist/*.whl '*.dist-info/METADATA' | grep -nP '\]\((?!https?:|mailto:|#)'; then
+            echo "::error::relative link left in the PyPI description"
+            exit 1
+          fi
+          uvx twine check --strict dist/*
+          version="$(uv run --isolated --no-project --with "$(ls dist/*.whl)" \
+            python -c 'import txstore; print(txstore.__version__)')"
+          test "$version" = "${GITHUB_REF_NAME#v}"
+
+  publish-testpypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/txstore
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
+
+  publish-pypi:
+    needs: publish-testpypi
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/txstore
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+
+  github-release:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --repo "$GITHUB_REPOSITORY"
+          --title "$GITHUB_REF_NAME"
+          --notes "Upgrade notes: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/SETUP.md#upgrade-notes"

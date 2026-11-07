@@ -1,0 +1,61 @@
+# Quality gates → SETUP.md#quality-gates. Also called by release.yml before publishing.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly: catch a Debian testing migration that breaks the suite → SETUP.md#dependency-policy.
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy
+      - run: uv run python scripts/check_docs.py
+      - run: uv build
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.13", "3.14"]
+    # Linux only, the one platform the pyproject.toml classifiers list.
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run pytest --cov --strict-backends
+
+  debian-testing:
+    runs-on: ubuntu-latest
+    # Debian testing until forky releases; then the next testing suite.
+    container: debian:forky
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: sh .github/debian-test.sh

@@ -62,6 +62,7 @@ _EXPECTED_ALL = sorted(
         "parse_bucket_acl",
         "parse_object_acl",
         "parse_storage_url",
+        "redact_url",
     ]
 )
 

@@ -13,8 +13,9 @@ from txstore import (
     is_unsafe_path,
     join_url,
     parse_storage_url,
+    redact_url,
 )
-from txstore.url import join_path, parse_s3_url_path, redact_url, strip_userinfo
+from txstore.url import join_path, parse_s3_url_path, strip_userinfo
 
 # --------------------------------------------------------------------------- #
 # join_url

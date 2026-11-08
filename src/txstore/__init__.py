@@ -61,6 +61,7 @@ from txstore.url import (
     is_unsafe_path,
     join_url,
     parse_storage_url,
+    redact_url,
 )
 
 __version__ = _pkg_version("txstore")
@@ -105,4 +106,5 @@ __all__ = [
     "parse_bucket_acl",
     "parse_object_acl",
     "parse_storage_url",
+    "redact_url",
 ]

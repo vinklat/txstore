@@ -13,8 +13,7 @@ names the contracts behind it.
 - **Paths.** Object paths are relative to the storage root, with `/` separators, on every backend.
 - **Digests.** A digest dict has the keys `MD5Sum`, `SHA1`, `SHA256`, `SHA512`, and `Size`.
 - **Examples.** Examples share one story: a release directory `/srv/data` on disk and the bucket
-  `releases` on `s3.example.com`. Credentials come from `TXSTORE_S3_ACCESS` and
-  `TXSTORE_S3_SECRET`.
+  `releases` on `s3.example.com`. Credentials come from `TXSTORE_S3_ACCESS` and `TXSTORE_S3_SECRET`.
 
 ## Reading order
 

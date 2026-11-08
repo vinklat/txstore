@@ -13,8 +13,9 @@ from txstore import (
     is_unsafe_path,
     join_url,
     parse_storage_url,
+    redact_url,
 )
-from txstore.url import join_path, parse_s3_url_path, redact_url, strip_userinfo
+from txstore.url import join_path, parse_s3_url_path, strip_userinfo
 
 # --------------------------------------------------------------------------- #
 # join_url
@@ -301,6 +302,35 @@ def test_redact_url_hides_a_password_that_splits_the_url(url: str) -> None:
     assert redact_url(url) == "<unparseable URL>"
 
 
+# urllib drops tabs and line breaks before splitting, and reads userinfo with no `//` as a path,
+# so the netloc that redaction matches is not in the string it edits.
+_HIDDEN_USERINFO_URLS = [
+    pytest.param("https://u:hunter2\t@h/x", "control character", id="tab"),
+    pytest.param("https://u:hunter2\r\n@h/x", "control character", id="crlf"),
+    pytest.param("https://u\n:hunter2@h/x", "control character", id="newline-in-user"),
+    pytest.param("https:u:hunter2@h/x", "no '//' authority", id="no-slashes"),
+    pytest.param("https:/u:hunter2@h/x", "no '//' authority", id="one-slash"),
+    pytest.param(" https:u:hunter2@h/x", "no '//' authority", id="leading-space"),
+    pytest.param("fs:u:hunter2@h/b", "no '//' authority", id="fs-no-slashes"),
+]
+
+
+@pytest.mark.parametrize(("url", "_match"), _HIDDEN_USERINFO_URLS)
+def test_redact_url_hides_userinfo_urllib_does_not_see(url: str, _match: str) -> None:
+    assert redact_url(url) == "<unparseable URL>"
+
+
+@pytest.mark.parametrize(("url", "match"), _HIDDEN_USERINFO_URLS)
+def test_parse_storage_url_refuses_userinfo_urllib_does_not_see(
+    url: str, match: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.DEBUG), pytest.raises(ValueError, match=match) as excinfo:
+        parse_storage_url(url)
+    assert "hunter2" not in "".join(traceback.format_exception(excinfo.value))
+    assert "hunter2" not in caplog.text
+    assert excinfo.value.__context__ is None
+
+
 @pytest.mark.parametrize("url", _SPLIT_PASSWORD_URLS)
 def test_parse_storage_url_refuses_a_password_that_splits_the_url(
     url: str, caplog: pytest.LogCaptureFixture
@@ -397,8 +427,6 @@ def test_parse_storage_url_unknown_scheme_raises() -> None:
         pytest.param("fs:./a", id="dot-relative"),
         pytest.param("fs:~/a", id="tilde"),
         pytest.param("fs:hunter2/a", id="relative-marker"),
-        # A dropped `//` turns userinfo into a relative path, past the authority check.
-        pytest.param("fs:u:hunter2@h/b", id="userinfo-without-slashes"),
     ],
 )
 def test_parse_storage_url_refuses_an_fs_path_that_is_not_absolute(url: str) -> None:

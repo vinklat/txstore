@@ -4,9 +4,9 @@ Owns: `make_storage` and `HistoryRetention.from_env` settings, their `TXSTORE_*`
 variables, resolution order, defaults, and secrets. Routing →
 [AGENTS.md](AGENTS.md#canonical-sources).
 
-txstore's own configuration is keyword arguments and `TXSTORE_*` variables only; an application
-that exposes its own flags maps them to the keyword arguments below. The HTTP and S3 clients also
-honour their libraries' standard environment → [Secrets](#secrets).
+txstore's own configuration is keyword arguments and `TXSTORE_*` variables only; an application that
+exposes its own flags maps them to the keyword arguments below. The HTTP and S3 clients also honour
+their libraries' standard environment → [Secrets](#secrets).
 
 ## Resolution
 
@@ -65,6 +65,10 @@ values → [VALIDATION.md](VALIDATION.md#history-retention).
 - Credentials in a URL's userinfo (`user:password@host`) and its query string are replaced by `***`
   in logs, `repr`, and exception messages; which URLs are accepted →
   [VALIDATION.md](VALIDATION.md#storage-urls).
+- `redact_url` is the caller-side helper for the same redaction: it masks userinfo and the query,
+  keeps the path, `;params`, and fragment as written, and returns `<unparseable URL>` for a URL that
+  breaks the authority, control character, or authority marker rule →
+  [VALIDATION.md](VALIDATION.md#storage-urls).
 - Percent-encode non-ASCII characters and `/`, `?`, `#`, and `@` in URL credentials; how an
   unencoded one parses → [VALIDATION.md](VALIDATION.md#storage-urls). A URL whose authority does not
   parse appears as `<unparseable URL>`; a password that parses as a host, port, and path is kept out
@@ -85,6 +89,6 @@ values → [VALIDATION.md](VALIDATION.md#history-retention).
 
 ## Maintenance
 
-A new setting adds its keyword argument, its `_env` read with a `TXSTORE_` literal, and its row
-here in the same change; `scripts/check_docs.py` fails when a read variable has no
+A new setting adds its keyword argument, its `_env` read with a `TXSTORE_` literal, and its row here
+in the same change; `scripts/check_docs.py` fails when a read variable has no
 [Environment variables](#environment-variables) row or a row names no read variable.

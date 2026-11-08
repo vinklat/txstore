@@ -5,7 +5,7 @@ buckets, and HTTP servers, selected by URL. Read, write, list, and stream object
 with the same calls, and on the filesystem and S3, optionally group writes into a transaction you
 commit, discard, or revert as one unit.
 
-Current version: **0.1.1**. Planned work → [ROADMAP.md](ROADMAP.md).
+Current version: **0.1.2**. Planned work → [ROADMAP.md](ROADMAP.md).
 
 ## Capabilities
 

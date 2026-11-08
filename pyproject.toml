@@ -1,6 +1,6 @@
 [project]
 name = "txstore"
-version = "0.1.1"
+version = "0.1.2"
 description = "Unified object storage for Python: one interface over filesystem, S3, and HTTP, with transactions."
 authors = [{name = "Václav Vinklát"}]
 license = "MIT"

@@ -291,6 +291,20 @@ def test_make_storage_warns_when_tls_verification_is_off(
 
 
 @pytest.mark.parametrize(
+    "url", ["https:u:hunter2@example.com/x", "https://u:hunter2\t@example.com/x"]
+)
+def test_make_storage_refuses_userinfo_urllib_does_not_see_without_logging_it(
+    url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with (
+        caplog.at_level(logging.DEBUG, logger="txstore"),
+        pytest.raises(ValueError, match="URL holds"),
+    ):
+        make_storage(url, verify_ssl=False)
+    assert "hunter2" not in caplog.text
+
+
+@pytest.mark.parametrize(
     ("url", "warned"),
     [
         pytest.param("http://u:secret@h.example/base/", True, id="http-userinfo"),

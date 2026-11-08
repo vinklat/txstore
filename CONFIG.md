@@ -4,9 +4,9 @@ Owns: `make_storage` and `HistoryRetention.from_env` settings, their `TXSTORE_*`
 variables, resolution order, defaults, and secrets. Routing →
 [AGENTS.md](AGENTS.md#canonical-sources).
 
-txstore's own configuration is keyword arguments and `TXSTORE_*` variables only; an application
-that exposes its own flags maps them to the keyword arguments below. The HTTP and S3 clients also
-honour their libraries' standard environment → [Secrets](#secrets).
+txstore's own configuration is keyword arguments and `TXSTORE_*` variables only; an application that
+exposes its own flags maps them to the keyword arguments below. The HTTP and S3 clients also honour
+their libraries' standard environment → [Secrets](#secrets).
 
 ## Resolution
 
@@ -85,6 +85,6 @@ values → [VALIDATION.md](VALIDATION.md#history-retention).
 
 ## Maintenance
 
-A new setting adds its keyword argument, its `_env` read with a `TXSTORE_` literal, and its row
-here in the same change; `scripts/check_docs.py` fails when a read variable has no
+A new setting adds its keyword argument, its `_env` read with a `TXSTORE_` literal, and its row here
+in the same change; `scripts/check_docs.py` fails when a read variable has no
 [Environment variables](#environment-variables) row or a row names no read variable.

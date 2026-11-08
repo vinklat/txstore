@@ -264,7 +264,7 @@ the `Storage` ABI.
 ### Record
 
 ```json
-{"id": 7, "timestamp": "2026-06-08T10:15:30.123456789Z"}
+{ "id": 7, "timestamp": "2026-06-08T10:15:30.123456789Z" }
 ```
 
 | Field | Rule |

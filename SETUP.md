@@ -115,8 +115,8 @@ A floor raise names the Debian testing version that satisfies it in the change d
 
 ## Upgrade notes
 
-- 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with
-  no `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
+- 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
+  `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
 - 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →
   [CONFIG.md](CONFIG.md#environment-variables).
 - 0.1.0: initial public release.

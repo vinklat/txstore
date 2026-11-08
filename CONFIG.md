@@ -66,8 +66,8 @@ values → [VALIDATION.md](VALIDATION.md#history-retention).
   in logs, `repr`, and exception messages; which URLs are accepted →
   [VALIDATION.md](VALIDATION.md#storage-urls).
 - `redact_url` is the caller-side helper for the same redaction: it masks userinfo and the query,
-  keeps the path, `;params`, and fragment as written, and returns `<unparseable URL>` for a URL
-  that breaks the authority, control character, or authority marker rule →
+  keeps the path, `;params`, and fragment as written, and returns `<unparseable URL>` for a URL that
+  breaks the authority, control character, or authority marker rule →
   [VALIDATION.md](VALIDATION.md#storage-urls).
 - Percent-encode non-ASCII characters and `/`, `?`, `#`, and `@` in URL credentials; how an
   unencoded one parses → [VALIDATION.md](VALIDATION.md#storage-urls). A URL whose authority does not

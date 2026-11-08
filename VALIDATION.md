@@ -21,6 +21,8 @@ empty for a backend with no transport.
 | Rule | Constraint | Failure |
 | -- | -- | -- |
 | Supported schemes | Exactly `fs`, `s3`, `http`, `https` from `get_supported_schemes()`. | Other scheme → `ValueError` |
+| Control characters | The URL holds no C0 control character or DEL: urllib drops tabs and line breaks before splitting, so the userinfo it reads would differ from the logged string. `%09`, `%0A`, `%0D` encode them. | Control character → `ValueError`, without echoing the URL |
+| Authority marker | A URL holding `@` writes its authority after `//`: without it, urllib reads `user:password@host` as a path. | `@` with no `//` after the scheme → `ValueError`, without echoing the URL |
 | Authority | urllib parses the URL, and a port, when present, is non-empty, numeric, and in range. | Unparseable URL (a non-ASCII character NFKC folds into a delimiter, a malformed bracketed host) or a bad port → `ValueError`, without echoing the URL |
 | Credential `/` | An unencoded `/` in `http(s)` credentials ends the authority before its `@`. A token-only userinfo, or a password whose characters before the `/` are digits, then parses as a host, port, and path without error; `%2F` keeps the userinfo whole. | Any other remainder: an empty, non-numeric, or out-of-range port → `ValueError`, without echoing the URL |
 | Credential `?` or `#` | An unencoded `?` or `#` in credentials ends the authority before its `@`; the URL never routes, whatever the remainder. `%3F` and `%23` keep the userinfo whole. | `?` or `#` in credentials → `ValueError`, without echoing the URL |
@@ -29,6 +31,7 @@ empty for a backend with no transport.
 | `fs://` path | The path starts with `/`, so a truncated URL never roots a store in the working directory. | Empty or relative `fs` path (`fs:`, `fs://`, `fs:a`) → `ValueError`, without echoing the URL |
 | Query and fragment | Routing keeps only netloc and path, so the URL holds no `?` or `#`, even an empty one. | `?` or `#` in the URL → `ValueError`, without echoing the URL |
 | Direct backend URLs | A `StorageHTTP` base URL or `StorageS3` endpoint holds no `?` or `#` either: a query would never be sent, and botocore echoes the endpoint in its errors. | `?` or `#` → `ValueError` from the constructor, without echoing the URL |
+| Direct backend authority | A `StorageHTTP` base URL or `StorageS3` endpoint follows the authority, control character, and authority marker rows above. | Violation → `ValueError` from the constructor, without echoing the URL |
 | `fs://` | `StorageType.fs`; no transport, so the scheme is empty. | — |
 | `s3://` | `StorageType.s3`; transport scheme normalized to `https`. | — |
 | `http://`, `https://` | `StorageType.http`; scheme preserved. | — |

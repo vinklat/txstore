@@ -69,6 +69,8 @@ def _is_parent_segment(segment: str) -> bool:
 _UNPARSEABLE_AUTHORITY = (
     "URL authority does not parse: percent-encode non-ASCII characters and / ? # @ in credentials"
 )
+_CONTROL_CHARACTER = "URL holds a control character: percent-encode tabs and line breaks"
+_NO_AUTHORITY = "URL holds '@' but no '//' authority: write scheme://user:password@host"
 
 
 def _authority_parses(parsed: ParseResult) -> bool:
@@ -90,9 +92,19 @@ def parse_url(url: str) -> ParseResult:
     """Return `urlparse(url)` after checking that its authority parses.
 
     Raises:
-        ValueError: If urllib refuses the URL or its authority does not parse; the message
-            never names the URL → [VALIDATION.md](VALIDATION.md#storage-urls).
+        ValueError: If the URL holds a control character, holds `@` with no `//` authority,
+            urllib refuses it, or its authority does not parse; the message never names the URL
+            → [VALIDATION.md](VALIDATION.md#storage-urls).
     """
+    # urllib drops tabs and line breaks before splitting, so its netloc would not match the
+    # string that redaction edits → [CONFIG.md](CONFIG.md#secrets).
+    if _CONTROL_CHARS.search(url):
+        raise ValueError(_CONTROL_CHARACTER)
+    # Without `//`, urllib reads `user:password@host` as a path, where no userinfo check or
+    # redaction looks.
+    scheme, colon, rest = url.partition(":")
+    if colon and scheme and "@" in url and not rest.startswith("//"):
+        raise ValueError(_NO_AUTHORITY)
     # urllib's own error quotes the netloc, credentials included, so the refusal is raised
     # after the handler and carries no context.
     try:
@@ -128,8 +140,9 @@ def redact_url(url: str) -> str:
 
     Returns:
         str: the URL with `***@` in place of any userinfo and `?***` in place of any query;
-            unchanged when it has neither; `<unparseable URL>` when its authority does not
-            parse, since an unencoded `/`, `?`, or `#` in a password ends the authority early.
+            unchanged when it has neither; `<unparseable URL>` when it holds a control
+            character, holds `@` with no `//` authority, or its authority does not parse, since
+            an unencoded `/`, `?`, or `#` in a password ends the authority early.
     """
     try:
         parsed = parse_url(url)

@@ -382,6 +382,18 @@ def test_storage_http_repr_redacts_credentials() -> None:
     assert "***@repo.example.com/debian" in text
 
 
+@pytest.mark.parametrize(
+    "base_url", ["https://u:hunter2\n@repo.example.com/debian", "https:u:hunter2@repo.example.com/"]
+)
+def test_storage_http_refuses_userinfo_urllib_does_not_see(
+    base_url: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.DEBUG), pytest.raises(ValueError, match="URL holds") as excinfo:
+        StorageHTTP(base_url)
+    assert "hunter2" not in "".join(traceback.format_exception(excinfo.value))
+    assert "hunter2" not in caplog.text
+
+
 @responses.activate
 @pytest.mark.parametrize("status", [403, 503])
 def test_storage_http_error_message_redacts_credentials(

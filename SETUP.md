@@ -44,8 +44,8 @@ on pull requests, weekly, and before each release; it checks the lockfile throug
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
-markers in contracts, the `docs/*/README.md` indexes, the README version, PyPI-only package sources,
-and the [diagram](#diagrams) fence and embed rules.
+markers in contracts, the `docs/*/README.md` indexes, the README version, an upgrade note for that
+version, PyPI-only package sources, and the [diagram](#diagrams) fence and embed rules.
 
 ## Diagrams
 
@@ -91,6 +91,8 @@ A floor raise names the Debian testing version that satisfies it in the change d
 | Version parity | `check_docs.py` fails when the two differ. |
 | `__version__` | Read from the installed distribution. |
 | Version bump | `uv version --bump patch` (or `minor`, `major`), the README line to match, and every `Unreleased:` upgrade note renamed to `<version>:`. |
+| Pre-1.0 versions | A minor bump starts a [ROADMAP.md](ROADMAP.md#phases) phase; every other release is a patch, new public names and breaking changes included. Semantic versioning applies from 1.0.0. |
+| Upgrade note | Every release adds a `<version>:` [upgrade note](#upgrade-notes) naming each new public name, breaking change, and renamed or removed setting. |
 | Steps | Version bump → [quality gates](#quality-gates) → merge to `main` → `git tag vX.Y.Z` on `main` → `git push origin vX.Y.Z`. |
 | Trigger | Pushing a tag `vX.Y.Z`, with or without a suffix (e.g. `v0.2.0rc1`). |
 | Tag format | `vX.Y.Z`, the pattern the planned `debian/watch` tracks → [ROADMAP.md](ROADMAP.md#phases). |
@@ -113,4 +115,8 @@ A floor raise names the Debian testing version that satisfies it in the change d
 
 ## Upgrade notes
 
+- 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with
+  no `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
+- 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →
+  [CONFIG.md](CONFIG.md#environment-variables).
 - 0.1.0: initial public release.

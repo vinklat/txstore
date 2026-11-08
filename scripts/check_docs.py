@@ -20,6 +20,7 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
 - every ``ROOT.md#anchor`` cited in ``src/`` or ``tests/`` names a root document and a heading;
 - every ``docs/<dir>/`` holding pages has a ``README.md`` that links each sibling page;
 - the ``README.md`` "Current version" line equals ``[project].version``;
+- ``SETUP.md`` "Upgrade notes" holds a ``- <version>:`` note for ``[project].version``;
 - packages resolve from public PyPI only: ``pyproject.toml`` declares no custom index and every
   ``uv.lock`` registry is ``https://pypi.org/simple``.
 
@@ -447,6 +448,16 @@ def check_version(docs: dict[str, str]) -> list[str]:
     return [f"README.md: version {found or 'missing'}, pyproject.toml has {expected}"]
 
 
+def check_upgrade_note(docs: dict[str, str]) -> list[str]:
+    """``SETUP.md`` "Upgrade notes" holds a note for ``[project].version``."""
+    version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
+    _, _, notes = docs.get("SETUP.md", "").partition("\n## Upgrade notes\n")
+    notes = notes.split("\n## ", 1)[0]
+    if re.search(rf"^- {re.escape(version)}:", notes, re.MULTILINE):
+        return []
+    return [f"SETUP.md: no upgrade note for {version}"]
+
+
 def check_package_sources() -> list[str]:
     """Dependencies resolve from public PyPI only."""
     errors: list[str] = []
@@ -486,6 +497,7 @@ def main() -> int:
         *check_code_references(docs),
         *check_docs_index(all_docs),
         *check_version(docs),
+        *check_upgrade_note(docs),
         *check_package_sources(),
     ]
     for error in errors:

@@ -28,18 +28,32 @@ Current version: **0.1.2**. Planned work → [ROADMAP.md](ROADMAP.md).
 
 ### Install
 
-Released versions are published to [PyPI](https://pypi.org/project/txstore/):
+Released versions are published to [PyPI](https://pypi.org/project/txstore/). Prerequisites →
+[SETUP.md](SETUP.md#prerequisites-and-install).
 
 ```bash
 pip install txstore
 ```
 
-Settings → [CONFIG.md](CONFIG.md); behavior → [STORAGE.md](STORAGE.md).
+### Example 1: Put and get
 
-### Stream between backends
+Every backend is a `Storage` built from a URL. Put and get operations work the same way on all
+supported backends (filesystem, S3 and other):
 
-Every backend is a `Storage` built from a URL, so moving data between technologies is one call.
-Download a web page and save it to disk, streamed in chunks rather than loaded into memory:
+```python
+from txstore import make_storage
+
+storage = make_storage("fs:///srv/data", create_path=True)
+
+storage.put("hello.txt", b"hello world")
+print(storage.get("hello.txt"))
+# b'hello world'
+```
+
+### Example 2: Stream between backends
+
+Moving data between technologies is one call. Download a web page and save it to disk, streamed in
+chunks rather than loaded into memory:
 
 ```python
 from txstore import make_storage
@@ -52,12 +66,10 @@ print(digests)
 # {'MD5Sum': '...', 'SHA1': '...', 'SHA256': '...', 'SHA512': '...', 'Size': '180750'}
 ```
 
-Swap either URL for `s3://...` and the same call uploads to or downloads from a bucket. HTTP storage
-is read-only and does not follow redirects; point the base URL at the final location.
+### Example 3: Group writes into a transaction
 
-### Group writes into a transaction
-
-Writes to the filesystem or S3 can be grouped into a transaction:
+Writes can be transactional to ensure atomicity. Committed operations are applied together, while
+failures discard all staged writes:
 
 ```python
 from txstore import HistoryRetention, TransactionHistory, make_storage, maybe_transaction
@@ -85,18 +97,6 @@ print(
 )  # [(1, '2026-10-23T19:08:36.024119Z')]
 history.revert_last()
 assert not storage.exists("manifest.json")
-```
-
-### Connect to S3
-
-On S3, pass the endpoint and bucket in the URL and the credentials as arguments or variables:
-
-```bash
-export TXSTORE_S3_ACCESS=... TXSTORE_S3_SECRET=...
-```
-
-```python
-storage = make_storage("s3://s3.example.com/bucket/prefix", s3_default_acl="private")
 ```
 
 ## Documentation

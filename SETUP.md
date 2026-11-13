@@ -13,6 +13,24 @@ Owns: install, test, quality gates, diagrams, dependency policy, release, and up
 uv sync
 ```
 
+A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-container).
+
+## Dev container
+
+`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing, including the legs a
+macOS host skips.
+
+| Item | Rule |
+| -- | -- |
+| Base | `debian:forky`, unpinned like the `debian-testing` job, so it follows testing → [dependency policy](#dependency-policy). |
+| Python | Debian's `python3`; `UV_PYTHON=<version>` makes uv download another. |
+| Build tools | `gcc`, `libc6-dev`, and `python3-dev`: `pyxattr` ships as an sdist only. |
+| Environment | `/home/dev/.venv` through `UV_PROJECT_ENVIRONMENT`; the host `.venv` on the bind mount stays untouched. |
+| Setup | `uv sync --locked` on create. |
+| Tests | `uv run pytest --cov --strict-backends` passes: xattrs and POSIX ACLs are available. |
+| Diagrams | `render_diagrams.py --check` runs inside; rendering runs on the host, as the container has no Docker. |
+| uv | Pinned by version and digest in the `Dockerfile`; bump it with the local uv version. |
+
 ## Test
 
 Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage →

@@ -1,0 +1,13 @@
+{
+  // Contributor environment on Debian testing → SETUP.md#dev-container.
+  "name": "txstore (Debian forky)",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "dev",
+  "postCreateCommand": "uv sync --locked",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": { "python.defaultInterpreterPath": "/home/dev/.venv/bin/python" }
+    }
+  }
+}

@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, test, quality gates, diagrams, dependency policy, release, and upgrade notes. Routing
-→ [AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, dev container, test, quality gates, diagrams, dependency policy, release, and
+upgrade notes. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -17,19 +17,20 @@ A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-containe
 
 ## Dev container
 
-`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing, including the legs a
-macOS host skips.
+`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing's `python3`, including
+the legs a macOS host skips.
 
 | Item | Rule |
 | -- | -- |
-| Base | `debian:forky`, unpinned like the `debian-testing` job, so it follows testing → [dependency policy](#dependency-policy). |
-| Python | Debian's `python3`; `UV_PYTHON=<version>` makes uv download another. |
-| Build tools | `gcc`, `libc6-dev`, and `python3-dev`: `pyxattr` ships as an sdist only. |
-| Environment | `/home/dev/.venv` through `UV_PROJECT_ENVIRONMENT`; the host `.venv` on the bind mount stays untouched. |
+| Base | The `debian-testing` job's image, renamed with it. Dependencies come from `uv.lock`, not apt, so the Debian floors stay that job's → [dependency policy](#dependency-policy). |
+| Python | Debian's `python3`, preferred over uv-managed Pythons. `UV_PYTHON=<version> uv sync` rebuilds the venv on another version, downloading it if Debian lacks it; the venv keeps it until the next such sync. |
+| Environment | The venv lives outside the workspace through `UV_PROJECT_ENVIRONMENT`; the host `.venv` on the bind mount stays untouched. |
 | Setup | `uv sync --locked` on create. |
-| Tests | `uv run pytest --cov --strict-backends` passes: xattrs and POSIX ACLs are available. |
-| Diagrams | `render_diagrams.py --check` runs inside; rendering runs on the host, as the container has no Docker. |
-| uv | Pinned by version and digest in the `Dockerfile`; bump it with the local uv version. |
+| User | Non-root `dev` without sudo, so the tests that skip as root run; for root, `docker exec -u root`. |
+| Tests | Every `--strict-backends` leg runs: the moto server, and user xattrs, POSIX ACLs, and setgid bits under `/tmp` on Docker's overlay2 storage → [quality gates](#quality-gates). |
+| Diagrams | No Docker inside: render on the host → [diagrams](#diagrams). |
+| uv | Pinned by tag and digest in the `Dockerfile`; a bump updates both. |
+| Check | Not in CI: after a change to `.devcontainer/`, rebuild it and run every quality gate inside. |
 
 ## Test
 

@@ -1,6 +1,6 @@
 {
   // Contributor environment on Debian testing → SETUP.md#dev-container.
-  "name": "txstore (Debian forky)",
+  "name": "txstore (Debian testing)",
   "build": { "dockerfile": "Dockerfile" },
   "remoteUser": "dev",
   "postCreateCommand": "uv sync --locked",

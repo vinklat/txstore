@@ -30,7 +30,7 @@ Owns: directories, module ownership, the public façade, and internal import dir
 | `docs/development/` | Non-canonical contributor explanations and diagrams. |
 | `docs/development/diagrams/` | PlantUML sources (`*.puml`) and their committed SVG renders → [SETUP.md](SETUP.md#diagrams). |
 | `docs/reference/` | Non-canonical reference artifacts, including `footmark.proto`. |
-| `.devcontainer/` | Debian forky contributor environment → [SETUP.md](SETUP.md#dev-container). |
+| `.devcontainer/` | Debian testing contributor environment → [SETUP.md](SETUP.md#dev-container). |
 | `.github/` | `workflows/ci.yml` → [SETUP.md](SETUP.md#quality-gates); `debian-test.sh` → [SETUP.md](SETUP.md#dependency-policy); `workflows/release.yml` and `build-constraints.txt` → [SETUP.md](SETUP.md#release). |
 
 `pyproject.toml` and `uv.lock` define the package and its development environment.

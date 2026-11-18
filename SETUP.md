@@ -17,8 +17,7 @@ A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-containe
 
 ## Dev container
 
-`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing's `python3`, including
-the legs a host on another OS (macOS, for example) skips.
+`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing's `python3`.
 
 | Item | Rule |
 | -- | -- |

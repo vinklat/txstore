@@ -1,5 +1,5 @@
 # Contributor environment on Debian testing → SETUP.md#dev-container.
-# Same base as the CI debian-testing job; rename it with that job → SETUP.md#dependency-policy.
+# Same base as the CI debian-testing job; rename it with that job → SETUP.md#dev-container.
 FROM debian:forky
 
 # Pinned by tag and digest; a bump updates both → SETUP.md#dev-container.
@@ -16,7 +16,3 @@ RUN apt-get update \
 
 # Non-root, so the tests that skip as root run → SETUP.md#dev-container.
 USER dev
-# The venv lives outside the workspace, so the host's .venv on the bind mount stays untouched.
-# Debian's python3 wins over managed Pythons when uv recreates the venv.
-ENV UV_PROJECT_ENVIRONMENT=/home/dev/.venv \
-    UV_PYTHON_PREFERENCE=system

@@ -54,6 +54,7 @@ jobs:
   debian-testing:
     runs-on: ubuntu-latest
     # Debian testing until forky releases; then the next testing suite.
+    # .devcontainer/Dockerfile follows this image → SETUP.md#dev-container.
     container: debian:forky
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

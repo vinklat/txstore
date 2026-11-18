@@ -1,0 +1,17 @@
+{
+  // Contributor environment on Debian testing → SETUP.md#dev-container.
+  "name": "txstore (Debian testing)",
+  "build": { "dockerfile": "Dockerfile" },
+  // Venv outside the workspace; Debian's python3 preferred → SETUP.md#dev-container.
+  "containerEnv": {
+    "UV_PROJECT_ENVIRONMENT": "/home/dev/.venv",
+    "UV_PYTHON_PREFERENCE": "system"
+  },
+  "postCreateCommand": "uv sync --locked",
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff"],
+      "settings": { "python.defaultInterpreterPath": "/home/dev/.venv/bin/python" }
+    }
+  }
+}

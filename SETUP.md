@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, test, quality gates, diagrams, dependency policy, release, and upgrade notes. Routing
-→ [AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, dev container, test, quality gates, diagrams, dependency policy, release, and upgrade
+notes. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -12,6 +12,26 @@ Owns: install, test, quality gates, diagrams, dependency policy, release, and up
 ```bash
 uv sync
 ```
+
+A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-container).
+
+## Dev container
+
+`.devcontainer/` runs every [quality gate](#quality-gates) on Debian testing's `python3`.
+
+| Item | Rule |
+| -- | -- |
+| Base | The `debian-testing` job's image, renamed with it; a floating tag, so it tracks testing. |
+| Dependencies | From `uv.lock`, not apt; the Debian floors stay the `debian-testing` job's → [dependency policy](#dependency-policy). |
+| Python | Debian's `python3`, preferred over uv-managed Pythons. |
+| Other Python | `UV_PYTHON=<version> uv sync` rebuilds the venv on that version, downloading it if Debian lacks it; the venv keeps it until the next sync. |
+| Environment | `UV_PROJECT_ENVIRONMENT` puts the venv outside the workspace; the host `.venv` on the bind mount stays untouched. |
+| Setup | `uv sync --locked` on create. |
+| User | Non-root `dev` without sudo, so the tests that skip as root run; for root, `docker exec -u root`. |
+| Tests | `uv run pytest --cov --strict-backends` passes: every backend leg → [TESTING.md](TESTING.md#harness-and-gates) is available. |
+| Diagrams | No Docker inside: render on the host → [diagrams](#diagrams). |
+| uv | Pinned by tag and digest in the `Dockerfile`, as a third-party binary; a bump updates both. |
+| Check | Not in CI: after a change to `.devcontainer/`, rebuild it and run every quality gate inside. |
 
 ## Test
 

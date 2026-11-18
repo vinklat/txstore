@@ -1,0 +1,18 @@
+# Contributor environment on Debian testing → SETUP.md#dev-container.
+# Same base as the CI debian-testing job; rename it with that job → SETUP.md#dev-container.
+FROM debian:forky
+
+# Pinned by tag and digest; a bump updates both → SETUP.md#dev-container.
+COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 \
+    /uv /uvx /usr/local/bin/
+
+# gcc, libc6-dev, and python3-dev build pyxattr, which PyPI ships as an sdist only.
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates git python3 python3-dev gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --gid 1000 dev \
+    && useradd --uid 1000 --gid dev --create-home --shell /bin/bash dev
+
+# Non-root, so the tests that skip as root run → SETUP.md#dev-container.
+USER dev

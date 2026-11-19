@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, dev container, test, quality gates, diagrams, dependency policy, release, and upgrade
-notes. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, dev container, test, quality gates, diagrams, dependency policy, Debian package,
+release, and upgrade notes. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -95,11 +95,32 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Python | Every Python version Debian testing ships is supported and in CI. |
 | Typing | Stub and typing-only packages are imported only under `TYPE_CHECKING` and stay in the `dev` group. |
 | Generated code | No module is generated code pinned to a runtime version. |
-| Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. |
+| Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. The Debian package's test set → [Debian package](#debian-package). |
 | Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
 | CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). |
 
 A floor raise names the Debian testing version that satisfies it in the change description.
+
+## Debian package
+
+txstore ships in Debian as `python3-txstore`, maintained by the Debian Python Team. The packaging
+lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP.md#phases).
+
+| Item | Rule |
+| -- | -- |
+| Names | Source `python-txstore`, binary `python3-txstore`, `Architecture: all`. |
+| Maintainer | `Debian Python Team <team+python@tracker.debian.org>`; the upstream author in `Uploaders`; a team Debian Developer sponsors the uploads. |
+| Repository | `salsa.debian.org/python-team/packages/python-txstore`, under the [team policy](https://salsa.debian.org/python-team/tools/python-modules/-/blob/master/policy.rst); this repository never carries `debian/`. |
+| Branches | `debian/main`, `upstream`, and `pristine-tar`, the team's DEP-14 names; Debian tags are `debian/<version>`. |
+| Upstream tarball | The GitHub tarball of tag `vX.Y.Z`, found by `debian/watch`; the `upstream` branch holds imported tarballs only, never upstream git history. |
+| Versions | A PEP 440 pre-release suffix maps to `~` (`0.2.0rc1` → `0.2.0~rc1`), so it sorts before its final; the Debian revision starts at `-1`. |
+| Build | `dh-python` with `pybuild-plugin-pyproject` and Debian's hatchling; the tests run on every Python 3 that unstable ships. |
+| Package tests | The suite without `test_check_docs.py`, `test_render_diagrams.py`, and `test_package.py`, which read `scripts/`, `src/`, and the root documents; the `ci.yml` jobs run them. |
+| Autopkgtest | `autopkgtest-pkg-pybuild`: the package tests against the installed package. |
+| CI | Salsa CI on the team repository builds the package and runs lintian, autopkgtest, reprotest, and piuparts; here, the `debian-testing` job keeps the [dependency floors](#dependency-policy). |
+| Lintian | No error or warning at `--pedantic`, except `unreleased-changes` while the changelog distribution is `UNRELEASED`. |
+| Upload path | Join the team → ITP → team repository → team sponsor upload with binaries to NEW → buildd rebuild → testing migration. |
+| Deadline | In testing before the forky soft freeze: a package missing from testing then is not in the release. |
 
 ## Release
 
@@ -115,7 +136,7 @@ A floor raise names the Debian testing version that satisfies it in the change d
 | Upgrade note | Every release adds a `<version>:` [upgrade note](#upgrade-notes) naming each new public name, breaking change, and renamed or removed setting. |
 | Steps | Version bump → [quality gates](#quality-gates) → merge to `main` → `git tag vX.Y.Z` on `main` → `git push origin vX.Y.Z`. |
 | Trigger | Pushing a tag `vX.Y.Z`, with or without a suffix (e.g. `v0.2.0rc1`). |
-| Tag format | `vX.Y.Z`, the pattern the planned `debian/watch` tracks → [ROADMAP.md](ROADMAP.md#phases). |
+| Tag format | `vX.Y.Z`, the pattern `debian/watch` tracks → [Debian package](#debian-package). |
 | Gates | `ci.yml` runs in full before the build. |
 | Tag checks | The tagged commit is on `main`, and the tag without its `v` equals the `pyproject.toml` version, or the release stops. |
 | Build | sdist and wheel, without the uv cache. |

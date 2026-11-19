@@ -25,7 +25,7 @@ definition.
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
 | `CONFIG.md` | `make_storage` and retention settings, `TXSTORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |
-| `SETUP.md` | Install, dev container, test, quality gates, diagrams, dependency policy, release, upgrade notes |
+| `SETUP.md` | Install, dev container, test, quality gates, diagrams, dependency policy, Debian package, release, upgrade notes |
 
 ## Task routing
 
@@ -46,6 +46,7 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | Bug fix | Owning contract + `EXCEPTIONS.md` | `TESTING.md` |
 | Tests | `TESTING.md` | Contract for the behavior under test |
 | Contract / doc edit | Writing rules below → owning contract | `scripts/check_docs.py`, `SETUP.md` quality gates |
+| Debian packaging | `SETUP.md` Debian package | `ROADMAP.md` phases, `.github/debian-test.sh` |
 | Release | `SETUP.md` release | `.github/workflows/release.yml`, `ROADMAP.md` phases |
 | Quality gate / CI / dev container change | `SETUP.md` quality gates | `.github/workflows/ci.yml`, `.devcontainer/` |
 | Developer explanation / diagram | `docs/development/` | Owning root contract, `SETUP.md` diagrams |

@@ -5,6 +5,7 @@
 | Phase | Status | Feature | Notes |
 | -- | -- | -- | -- |
 | 0.1.0 | ✅ | Initial public release | fs, S3, HTTP, and null backends; transactions, history, and retention; protobuf-free footmark codec; configuration by arguments or `TX_STORE_*` variables; Debian testing floors |
+| 0.1.3 | ⏳ | Bounded reads for untrusted sources | A size cap on `get` and `transfer` that stops at the limit instead of reading on; backend errors raised while a `get_stream` body is read mapped to `StorageException` → [STORAGE.md](STORAGE.md#storage-abi); a digest read with no sink storage → [STORAGE.md](STORAGE.md#digests); capability stubs raise a `StorageException` that is also a `NotImplementedError` → [EXCEPTIONS.md](EXCEPTIONS.md#rules); needed by debkit 0.1.1 |
 | 0.2.0 | ⏳ | Debian package for forky | `python3-txstore`, maintained by the Debian Python Team → [SETUP.md](SETUP.md#debian-package); open: join the team, ITP, team repository on salsa, team sponsor, upload to unstable, migration to testing before the forky soft freeze |
 | 1.0.0 | ⏳ | Stable API | Freeze the façade before the forky freeze so forky ships an API maintained for the whole release |
 
@@ -18,7 +19,7 @@ or the work is planned; drop it when it no longer applies.
 | Generated API reference in `docs/reference/` | The façade stabilizes (1.0.0) | [STRUCTURE.md](STRUCTURE.md#layout) |
 | GCS and Azure Blob backends | A user needs transactions on another object store | [STORAGE.md](STORAGE.md#backends) |
 | Async API; the per-thread writer-lock claim in `history_lock` then becomes per task (a `ContextVar` of a `frozenset`) | A caller needs concurrent transfers without threads | [STORAGE.md](STORAGE.md#storage-abi) |
-| Size cap or total deadline on `get` | A caller reads objects from an untrusted mirror: `get` holds the whole decoded body in memory on every backend, so a hostile HTTP origin can send an endless or gzip-bombed body; large reads use `get_stream` or `transfer` | [STORAGE.md](STORAGE.md#storage-abi) |
+| Total deadline on `get`, `get_stream`, and `transfer` | A hostile origin trickles a body under the 0.1.3 size cap slowly enough to stall a caller | [STORAGE.md](STORAGE.md#storage-abi) |
 | Renewable S3 lock | Critical sections approach the S3 lock TTL | [STORAGE.md](STORAGE.md#locking) |
 | Transactional writes as one manifest object | Partial commits on unreachable backends cost real data | [STORAGE.md](STORAGE.md#failure-semantics) |
 | Split `Storage` into readable, writable, and transactional interfaces | Before freezing the façade (1.0.0): the read-only and write-only mixins exist mainly to stub half of a 17-method ABC, and `TransactionNotSupportedMixin` only stubs transaction names on non-transactional backends; the split also adds the public transactional type that `is_transactional` narrows to, leaving `FootmarkMixin` an implementation mixin | [STORAGE.md](STORAGE.md#storage-abi) |

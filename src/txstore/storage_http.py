@@ -21,10 +21,10 @@ from urllib.parse import unquote, urlunparse
 import requests
 
 from txstore._capabilities import ReadOnlyStorageMixin, TransactionNotSupportedMixin
+from txstore._streams import GuardedStream
 from txstore.base import (
     CHUNK_SIZE,
     REQUEST_TIMEOUT,
-    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,

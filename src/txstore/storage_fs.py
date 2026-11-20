@@ -55,9 +55,9 @@ from txstore._fs_paths import (
     xattr_errors,
 )
 from txstore._reserved import LOCK_FILENAME, check_reserved_path, is_reserved_path
+from txstore._streams import GuardedStream
 from txstore.base import (
     CHUNK_SIZE,
-    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,

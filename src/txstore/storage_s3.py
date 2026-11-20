@@ -35,9 +35,9 @@ from txstore._s3_errors import (
     s3_errors,
 )
 from txstore._s3_lock import s3_lock
+from txstore._streams import GuardedStream
 from txstore.base import (
     CHUNK_SIZE,
-    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,

@@ -8,7 +8,8 @@ Owns: directories, module ownership, the public façade, and internal import dir
 | Path | Owns |
 | -- | -- |
 | `src/txstore/__init__.py` | Public façade: `__all__` is the supported surface; submodules are not. |
-| `src/txstore/base.py` | `Storage` ABI, `StorageType`, storage exceptions, `GuardedStream`, `CHUNK_SIZE`, `REQUEST_TIMEOUT`. |
+| `src/txstore/base.py` | `Storage` ABI, `StorageType`, storage exceptions, `CHUNK_SIZE`, `REQUEST_TIMEOUT`. |
+| `src/txstore/_streams.py` | `GuardedStream`, the body every backend's `get_stream` returns → [STORAGE.md](STORAGE.md#storage-abi). |
 | `src/txstore/storage_fs.py`, `storage_s3.py`, `storage_http.py`, `storage_null.py` | One backend each → [STORAGE.md](STORAGE.md#backends). |
 | `src/txstore/factory.py` | `make_storage()` and `NO_ACL`. |
 | `src/txstore/transaction.py` | `FootmarkMixin` (lifecycle, overlay, primitives), `TransactionModel`, `is_transactional`. |
@@ -44,7 +45,7 @@ Modules import each other in the directions below; `tests/test_package.py` asser
 | -- | -- |
 | Façade | Callers import `txstore`; no submodule imports the façade. |
 | Leaves | `_env`, `_footmark_wire`, `_s3_client`, `_timestamp`, `hexdigest`, and `metrics` import no `txstore` module. |
-| Core | `base` imports only `hexdigest` and `metrics`; `url`, `_capabilities`, `_reserved`, and `_fs_paths` build on `base`; `_s3_acl` and `_s3_errors` on `base` and `_s3_client`; `_s3_lock` on `base`, `_s3_client`, and `_s3_errors`; `footmark` on the wire codec and `Timestamp`. |
+| Core | `base` imports only `hexdigest` and `metrics`; `url`, `_capabilities`, `_reserved`, `_streams`, and `_fs_paths` build on `base`; `_s3_acl` and `_s3_errors` on `base` and `_s3_client`; `_s3_lock` on `base`, `_s3_client`, and `_s3_errors`; `footmark` on the wire codec and `Timestamp`. |
 | Transactions | `_reclaim` imports `footmark` and `_reserved`, and `transaction` for types only; `transaction` imports `base`, `footmark`, `_reserved`, and `_reclaim`; `history` imports `transaction` and no backend or `_s3_*` module. |
 | Backends | No backend imports another. Only the façade and `factory` import a backend module; a lock is the backend's `_obj_lock` primitive. |
 | Load-time cycles | None: no import is deferred → [STYLE.md](STYLE.md#python-baseline). |

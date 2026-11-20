@@ -88,6 +88,7 @@ _BACKEND_IMPORTERS = {"__init__", "factory"}
 _ALLOWED_IMPORTS = {
     "base": {"hexdigest", "metrics"},
     "_capabilities": {"base"},
+    "_streams": {"base"},
     "url": {"base"},
     "_reserved": {"base"},
     "_fs_paths": {"base"},

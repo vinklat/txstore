@@ -20,7 +20,9 @@ Current version: **0.1.3**. Planned work → [ROADMAP.md](ROADMAP.md).
   transaction, and cleanup of orphaned footmarks.
 - A cross-process writer lock: `flock` on the filesystem, conditional writes on S3.
 - Streamed transfers between storages that return MD5, SHA-1, SHA-256, and SHA-512 digests in one
-  pass.
+  pass; `get_digests` returns them without a copy.
+- Bounded reads: `max_size` on `get`, `transfer`, and `get_digests` stops an untrusted source at
+  the limit with `StorageTooLargeException` → [STORAGE.md](STORAGE.md#storage-abi).
 - S3 canned-ACL preservation across transactional copies and metadata rewrites.
 - Configuration by keyword arguments or `TXSTORE_*` environment variables; no CLI coupling.
 

@@ -73,7 +73,8 @@ unencoded `/` can parse part of a password as the host and path instead of raisi
 | Error | When |
 | -- | -- |
 | `StorageException` | Empty URL, HTTP or S3 URL without a host, missing S3 credentials, or any backend failure. |
-| `ValueError` | Unsupported scheme, a URL authority that does not parse, a URL query or fragment, an `s3://` URL holding `@`, an `fs://` URL naming a host or a relative path, a missing bucket name or an empty S3 prefix segment (`//`), an invalid ACL, or an invalid environment value → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
+| `ValueError` | Unsupported scheme, a URL authority that does not parse, a URL query or fragment, an `s3://` URL holding `@`, an `fs://` URL naming a host or a relative path, a missing bucket name or an empty S3 prefix segment (`//`), an invalid ACL, an invalid environment value, or an invalid `max_size` → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
+| `StorageTooLargeException` | `get`, `transfer`, or `get_digests` with `max_size` meets a larger object → [STORAGE.md](../../STORAGE.md#storage-abi). |
 | `StorageNotSupportedException` | `list`, a write, a metadata change, `copy`, `move`, `format()`, or a directory call on HTTP; a read, `list`, `copy`, `move`, or `mkdir` on the null sink; a transaction call on either, except `in_transaction()`, which returns `False`; also a `NotImplementedError` → [STORAGE.md](../../STORAGE.md#backends). |
 
 ## FAQ

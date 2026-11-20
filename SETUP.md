@@ -159,10 +159,9 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
 - 0.1.3: `StorageNotSupportedException` and `StorageTooLargeException` are exported from `txstore`;
   `get`, `transfer`, and the new `get_digests` take `max_size` →
   [STORAGE.md](STORAGE.md#storage-abi). Breaking: an unsupported operation raises
-  `StorageNotSupportedException`, so an `except StorageException` now catches it, while
-  `except NotImplementedError` still does; `get_stream` returns a wrapper without backend attributes
-  such as `iter_chunks` or `raw`, and a read failure on its body raises `StorageException`; HTTP
-  `get` streams its body.
+  `StorageNotSupportedException` → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions);
+  `get_stream` returns a wrapper without backend attributes such as `iter_chunks` or `raw`, and
+  its body read failures and HTTP `get` streaming change → [STORAGE.md](STORAGE.md#storage-abi).
 - 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
   `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
 - 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →

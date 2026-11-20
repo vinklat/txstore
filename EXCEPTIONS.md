@@ -15,9 +15,7 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
   storage (empty, HTTP or S3 without host, `s3://` without resolved keys): `make_storage` or the
   backend constructor raises `StorageException` → [STORAGE.md](STORAGE.md#construction); a malformed
   `s3://` path stays `ValueError` → [Other errors](#other-errors).
-- An operation a read-only, write-only, or non-transactional backend lacks →
-  `StorageNotSupportedException`, which is also a `NotImplementedError`, so either handler catches
-  it → [STORAGE.md](STORAGE.md#backends).
+- Unsupported backend operations → [Storage exceptions](#storage-exceptions).
 - Messages state the condition and the object; secrets never appear →
   [CONFIG.md](CONFIG.md#secrets).
 
@@ -41,6 +39,7 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
 | `ValueError` | Invalid environment value → [VALIDATION.md](VALIDATION.md#environment-values). |
 | `ValueError` | Out-of-range retention → [VALIDATION.md](VALIDATION.md#history-retention). |
 | `ValueError` | Invalid `max_size` passed to a capped read → [VALIDATION.md](VALIDATION.md#read-size-cap). |
+| `io.UnsupportedOperation` | `seek`, `tell`, or `fileno` on a non-`fs` `get_stream` body → [STORAGE.md](STORAGE.md#storage-abi); also a `ValueError`. |
 | `ValueError` | Out-of-range timestamp passed to `Timestamp`; one in a history record raises `StorageException` instead → [STORAGE.md](STORAGE.md#timestamps). |
 | `ValueError` | Out-of-range transaction id → [STORAGE.md](STORAGE.md#lifecycle). |
 

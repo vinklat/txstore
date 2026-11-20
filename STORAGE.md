@@ -18,8 +18,10 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `get_type()` | Backend `StorageType` (`fs`, `s3`, `http`, `null`). |
 | `list()` | Relative paths of regular objects; footmarks and hidden objects are excluded. |
 | `get(path, *, max_size=None)` / `get_stream(path)` | Object bytes / binary stream; missing object → `StorageNotFoundException`. |
-| `get_stream` body reads | A backend error raised while the body is read → `StorageException` chained from it, with one read error counted; on `http` the body is decoded per its `Content-Encoding`. |
-| `get_stream` seeking | Only an `fs` stream seeks and has `tell` and `fileno`; on the other backends those raise `io.UnsupportedOperation`, as an unseekable `io` stream does. |
+| `get_stream` body reads | A backend error raised while the body is read → `StorageException` chained from it. |
+| `get_stream` body encoding | On `http`, the body is decoded per its `Content-Encoding`. |
+| `get_stream` seeking | Only an `fs` stream seeks and has `tell` and `fileno`. |
+| `seek`, `tell`, or `fileno` on a non-`fs` stream | → `io.UnsupportedOperation`, as on an unseekable `io` stream. |
 | `exists(path)` | Existence probe; backend errors other than "not found" → `StorageException`. |
 | `get_metadata(path)` | Backend metadata dict (FS xattrs, S3 user metadata; HTTP: `http_status_code` plus `Content-Type`, `Content-Length`, `Content-Encoding`, `Last-Modified`, `ETag`, `Cache-Control` when sent). |
 | `get_metadata` failures | Missing object → `StorageNotFoundException`. On `fs`, a filesystem without xattr support yields `{}`; any other xattr failure → `StorageException`. |
@@ -41,9 +43,8 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `format()` | Destructive reset of the whole storage root; see per-backend rows below. |
 | `transfer(path_src, storage_dst, path_dst=None, acl=None, *, max_size=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
 | Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
-| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read from the backend stream, never more, with one read error counted on the source, as for any refusal made after the backend answered. |
+| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read from the backend stream, never more; in `transfer` the destination fails as from a failing stream. |
 | Size cap below the stream | The cap counts the bytes the backend stream returns: buffering below it can pull up to `CHUNK_SIZE` more from the source, and a compressed `http` body is bounded only as [ROADMAP.md](ROADMAP.md#known-deviations) records. |
-| Over the size cap in `transfer` | The destination fails as from a failing stream: it keeps no object, counts one write error, and the `StorageTooLargeException` propagates unchanged. |
 
 Streaming: `CHUNK_SIZE` is 1 MiB. HTTP requests use `REQUEST_TIMEOUT` of 30 s per connect and per
 socket read, with no total deadline → [ROADMAP.md](ROADMAP.md#ideas). `StorageMetrics` counts
@@ -51,7 +52,8 @@ read/write/delete objects, bytes, and errors per instance; each backend counts i
 in `put_stream`, so a `transfer` counts the source's read and the destination's write once each.
 A read counts its object when `get_stream` opens it, and its bytes only through `get`,
 `get_digests`, or a `transfer` source, so a caller reading `get_stream` itself counts none; a failed
-open, a failed body read, or a size-cap refusal counts a read error. Only the public verbs count:
+open, a failed body read, or a size-cap refusal counts a read error, as any refusal made after the
+backend answered does. Only the public verbs count:
 history and lock I/O and the commit, discard, and revert primitives do not.
 
 ## Backends
@@ -63,8 +65,9 @@ history and lock I/O and the commit, discard, and revert primitives do not.
 | `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list` and every write, metadata, copy, move, directory, and transaction method → `StorageNotSupportedException`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
 | `null` | `StorageNull` | no | yes | no | none | `WriteOnlyStorageMixin` + `TransactionNotSupportedMixin`; write-only sink for digest-only transfers; operations → [StorageNull operations](#storagenull-operations). Not URL-routable → [VALIDATION.md](VALIDATION.md#storage-urls). |
 
-An unsupported operation → `StorageNotSupportedException`, also a `NotImplementedError`, never
-`AttributeError`; the capability mixins in `txstore/_capabilities.py` provide the stubs.
+An unsupported operation → `StorageNotSupportedException`, never `AttributeError` →
+[EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions); the capability mixins in
+`txstore/_capabilities.py` provide the stubs.
 
 ### Backend specifics
 
@@ -81,7 +84,7 @@ An unsupported operation → `StorageNotSupportedException`, also a `NotImplemen
 | Operation | Behavior |
 | -- | -- |
 | Writes, metadata methods, `delete`, `format()`, `rmdir` | No-ops; a write drains its stream and counts the bytes. |
-| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `StorageNotSupportedException`. |
+| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `StorageNotSupportedException`; an invalid `max_size` → `ValueError` first → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 
 ## Construction
 
@@ -428,7 +431,7 @@ the object onto itself with `MetadataDirective="REPLACE"` in `txstore/_s3_client
 | `MD5Sum` | Kept because Debian indices still carry it; never decides a match on its own. |
 | `SUPPORT_HASH_LIST`, `COMPARE_HASH_LIST` | The algorithm keys in order, and the same list without `MD5Sum`; `compare_digests` iterates the first and counts a match only on the second, `normalize_digests` keeps only the second. |
 | `ChecksumOpen` | Wraps a stream and computes every digest and the size while it is read; reused by `transfer` and `get_digests`. |
-| `get_digests(path, *, max_size=None)` | Reads one object through `get_stream` only to digest it, counting the read bytes; no sink storage is needed. Size cap → [Storage ABI](#storage-abi). |
+| `get_digests(path, *, max_size=None)` | Reads one object through `get_stream` only to digest it; no sink storage is needed. Size cap → [Storage ABI](#storage-abi). |
 | `compare_digests(expected, incoming)` | `True` only when at least one algorithm other than `MD5Sum` is shared and every shared value, `MD5Sum` included, matches: MD5 can refuse a match but never make one. |
 | Non-overlapping, unknown, or mismatched digests | `compare_digests` returns `False`. |
 | `normalize_digests` | Canonicalizes algorithm names before comparison and drops unsupported ones and `MD5Sum`. |

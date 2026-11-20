@@ -11,6 +11,7 @@ configuration enters. The rules are owned by [STRUCTURE.md](../../STRUCTURE.md#d
 | -- | -- | -- |
 | Public surface | `txstore/__init__.py` | Re-exports; `__all__` is the API. |
 | ABI | `txstore/base.py` | `Storage`, exceptions, `transfer()`. |
+| Read streams | `txstore/_streams.py` | `GuardedStream`, the body every backend's `get_stream` returns. |
 | Construction | `txstore/factory.py` | `make_storage()`; reads `TXSTORE_*` through `_env`. |
 | Transactions | `txstore/transaction.py` | `FootmarkMixin` owns the algorithm; backends supply primitives. |
 | Reclamation | `txstore/_reclaim.py` | `ReclaimMixin`: footmark classification and reclamation. |

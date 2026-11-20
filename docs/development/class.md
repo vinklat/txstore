@@ -8,7 +8,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 | Concern | Module | Notes |
 | -- | -- | -- |
-| ABI and shared types | `txstore/base.py` | `Storage`, `StorageException`, `StorageNotFoundException`, `StorageType`, `transfer()` |
+| ABI and shared types | `txstore/base.py` | `Storage`, `StorageException`, `StorageNotFoundException`, `StorageTooLargeException`, `StorageNotSupportedException`, `StorageType`, `transfer()`, `get_digests()` |
+| Read streams | `txstore/_streams.py` | `GuardedStream`, the body every backend's `get_stream` returns → [STORAGE.md](../../STORAGE.md#storage-abi) |
 | Transactions | `txstore/transaction.py` | `FootmarkMixin`, `TransactionModel`, `is_transactional` |
 | Reclamation | `txstore/_reclaim.py` | `ReclaimMixin`, inherited by `FootmarkMixin` |
 | Capability stubs | `txstore/_capabilities.py` | `ReadOnlyStorageMixin`, `WriteOnlyStorageMixin`, `TransactionNotSupportedMixin` |

@@ -146,23 +146,16 @@ class ReadOnlyStorageMixin:
 
 
 class WriteOnlyStorageMixin:
-    """Default `StorageNotSupportedException` stubs for list/get/exists/copy/move/mkdir.
+    """Default `StorageNotSupportedException` stubs for list/get_stream/exists/copy/move/mkdir.
 
     Backends inheriting this mixin (e.g. `StorageNull`) only need to
     implement the write-side methods (`put`, `put_stream`, `delete`,
     `add_metadata`, `delete_metadata`, `delete_metadata_fields`,
-    `format`, `rmdir`).
+    `format`, `rmdir`). The shared `get`, `get_digests`, and `transfer` read through the
+    `get_stream` stub, so an invalid `max_size` → `ValueError` first, as on any backend.
     """
 
     def list(self) -> builtins.list[str]:
-        """Not supported (write-only storage)."""
-        raise StorageNotSupportedException(WRITE_ONLY_MSG)
-
-    def get(self, path: str, *, max_size: int | None = None) -> bytes:
-        """Not supported (write-only storage)."""
-        raise StorageNotSupportedException(WRITE_ONLY_MSG)
-
-    def get_digests(self, path: str, *, max_size: int | None = None) -> dict[str, str]:
         """Not supported (write-only storage)."""
         raise StorageNotSupportedException(WRITE_ONLY_MSG)
 

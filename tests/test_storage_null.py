@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
 
 import pytest
 from urllib3.exceptions import ProtocolError
@@ -80,6 +81,23 @@ def test_storage_null_read_methods_raise(
 ) -> None:
     with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
+
+
+@pytest.mark.parametrize(
+    "read",
+    [
+        lambda s: s.get("p", max_size=-1),
+        lambda s: s.get_digests("p", max_size=-1),
+        lambda s: s.transfer("p", StorageNull(), max_size=-1),
+    ],
+    ids=["get", "get_digests", "transfer"],
+)
+def test_storage_null_capped_reads_refuse_an_invalid_max_size_first(
+    storage: StorageNull, read: Callable[[StorageNull], object]
+) -> None:
+    """→ VALIDATION.md#read-size-cap: the argument is checked before the capability."""
+    with pytest.raises(ValueError, match="max_size"):
+        read(storage)
 
 
 def test_storage_null_is_never_in_a_transaction(storage: StorageNull) -> None:

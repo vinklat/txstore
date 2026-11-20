@@ -56,6 +56,16 @@ class StorageNotFoundException(StorageException):
         super().__init__(message)
 
 
+class StorageNotSupportedException(StorageException, NotImplementedError):
+    """Raised when a backend lacks the operation; also a `NotImplementedError`.
+
+    → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions).
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
 class Storage(ABC):
     """Abstract base class for storage backends.
 

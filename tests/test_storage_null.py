@@ -7,7 +7,7 @@ import io
 import pytest
 from urllib3.exceptions import ProtocolError
 
-from txstore import StorageException, StorageNull, StorageType
+from txstore import StorageException, StorageNotSupportedException, StorageNull, StorageType
 
 
 @pytest.fixture
@@ -77,7 +77,7 @@ def test_storage_null_format_and_rmdir_are_noops(storage: StorageNull) -> None:
 def test_storage_null_read_methods_raise(
     storage: StorageNull, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 
@@ -97,7 +97,7 @@ def test_storage_null_is_never_in_a_transaction(storage: StorageNull) -> None:
 def test_storage_null_has_no_transaction_support(
     storage: StorageNull, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 

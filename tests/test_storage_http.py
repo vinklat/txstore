@@ -23,6 +23,7 @@ from txstore import (
     StorageException,
     StorageHTTP,
     StorageNotFoundException,
+    StorageNotSupportedException,
     StorageType,
     make_storage,
 )
@@ -555,7 +556,7 @@ def test_storage_http_rejected_join_message_redacts_credentials() -> None:
 def test_storage_http_write_methods_raise_not_implemented(
     storage: StorageHTTP, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 
@@ -575,8 +576,8 @@ def test_storage_http_is_never_in_a_transaction(storage: StorageHTTP) -> None:
 def test_storage_http_has_no_transaction_support(
     storage: StorageHTTP, method: str, args: tuple[object, ...]
 ) -> None:
-    """StorageHTTP exposes transaction stubs that raise NotImplementedError."""
-    with pytest.raises(NotImplementedError):
+    """StorageHTTP exposes transaction stubs that raise StorageNotSupportedException."""
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 

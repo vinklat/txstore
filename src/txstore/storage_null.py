@@ -2,8 +2,8 @@
 
 Accepts writes (and bumps metrics) but discards the data. Every read /
 list / copy / move / mkdir is inherited from `WriteOnlyStorageMixin`
-and raises `NotImplementedError`. Transaction methods raise
-`NotImplementedError` via `TransactionNotSupportedMixin`.
+and raises `StorageNotSupportedException`. Transaction methods raise
+`StorageNotSupportedException` via `TransactionNotSupportedMixin`.
 
 Useful for:
 
@@ -33,7 +33,7 @@ class StorageNull(TransactionNotSupportedMixin, WriteOnlyStorageMixin, Storage):
     `delete_metadata`, `delete_metadata_fields`, `format`, `rmdir` as
     no-ops (with metrics where applicable). Every read/list/copy/move/
     mkdir method is inherited from `WriteOnlyStorageMixin` and raises
-    `NotImplementedError`.
+    `StorageNotSupportedException`.
     """
 
     def __init__(self) -> None:

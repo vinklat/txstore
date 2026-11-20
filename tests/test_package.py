@@ -43,6 +43,7 @@ _EXPECTED_ALL = sorted(
         "StorageHTTP",
         "StorageMetrics",
         "StorageNotFoundException",
+        "StorageNotSupportedException",
         "StorageNull",
         "StorageS3",
         "StorageType",
@@ -71,7 +72,6 @@ _THIRD_PARTY_RUNTIME = {"boto3", "botocore", "requests", "xattr"}
 
 # Modules that import no other txstore module.
 _LEAVES = {
-    "_capabilities",
     "_env",
     "_footmark_wire",
     "_s3_client",
@@ -86,6 +86,7 @@ _BACKEND_IMPORTERS = {"__init__", "factory"}
 # may import at run time; `history` is held by deny rules instead, since its row lists no allowlist.
 _ALLOWED_IMPORTS = {
     "base": {"hexdigest", "metrics"},
+    "_capabilities": {"base"},
     "url": {"base"},
     "_reserved": {"base"},
     "_fs_paths": {"base"},

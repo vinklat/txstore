@@ -15,7 +15,9 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
   storage (empty, HTTP or S3 without host, `s3://` without resolved keys): `make_storage` or the
   backend constructor raises `StorageException` → [STORAGE.md](STORAGE.md#construction); a malformed
   `s3://` path stays `ValueError` → [Other errors](#other-errors).
-- Unsupported backend operations → [Other errors](#other-errors).
+- An operation a read-only, write-only, or non-transactional backend lacks →
+  `StorageNotSupportedException`, which is also a `NotImplementedError`, so either handler catches
+  it → [STORAGE.md](STORAGE.md#backends).
 - Messages state the condition and the object; secrets never appear →
   [CONFIG.md](CONFIG.md#secrets).
 
@@ -25,6 +27,7 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
 | -- | -- | -- |
 | `StorageException` | `txstore/base.py` | A backend operation, transaction, history, or lock step fails → [STORAGE.md](STORAGE.md#failure-semantics). |
 | `StorageNotFoundException` | `txstore/base.py` | The named object is missing → [STORAGE.md](STORAGE.md#storage-abi); subclass of `StorageException`. |
+| `StorageNotSupportedException` | `txstore/base.py` | A read-only, write-only, or non-transactional backend is asked for an operation it lacks → [STORAGE.md](STORAGE.md#backends); subclass of `StorageException` and `NotImplementedError`. |
 
 ## Other errors
 
@@ -38,7 +41,6 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
 | `ValueError` | Out-of-range retention → [VALIDATION.md](VALIDATION.md#history-retention). |
 | `ValueError` | Out-of-range timestamp passed to `Timestamp`; one in a history record raises `StorageException` instead → [STORAGE.md](STORAGE.md#timestamps). |
 | `ValueError` | Out-of-range transaction id → [STORAGE.md](STORAGE.md#lifecycle). |
-| `NotImplementedError` | A read-only, write-only, or non-transactional backend is asked for an operation it lacks → [STORAGE.md](STORAGE.md#backends); not a `StorageException` → [ROADMAP.md](ROADMAP.md#known-deviations). |
 
 ## Maintenance
 

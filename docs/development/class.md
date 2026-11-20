@@ -22,7 +22,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 - `maybe_transaction` and `is_transactional` test `isinstance(storage, FootmarkMixin)`, not a
   structural check: `TransactionNotSupportedMixin` exposes the same method names as
-  `NotImplementedError` stubs, so a structural check would also match the HTTP and null backends.
+  `StorageNotSupportedException` stubs, so a structural check would also match the HTTP and null
+  backends.
 - The algorithm and the overlay live once in `FootmarkMixin`; a backend's public methods route
   through the overlay helpers, and the backend only maps relative paths to its own keys and supplies
   the primitives → [STORAGE.md](../../STORAGE.md#backend-primitives).

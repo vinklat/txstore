@@ -2,7 +2,7 @@
 
 Read-only access to HTTP resources. Write/delete/metadata/copy/move
 operations are inherited from `ReadOnlyStorageMixin` and raise
-`NotImplementedError`. Transaction methods raise `NotImplementedError`
+`StorageNotSupportedException`. Transaction methods raise `StorageNotSupportedException`
 via `TransactionNotSupportedMixin`.
 
 Redirects are never followed: `join_url` pins only the first request, so a
@@ -26,6 +26,7 @@ from txstore.base import (
     Storage,
     StorageException,
     StorageNotFoundException,
+    StorageNotSupportedException,
     StorageType,
 )
 from txstore.url import has_query_or_fragment, join_url, parse_url, redact_url, strip_userinfo
@@ -49,10 +50,10 @@ class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
     """Read-only storage backend for HTTP/HTTPS resources.
 
     Implements `get`, `get_stream`, `get_metadata`, `exists` against an
-    HTTP server; `list` raises `NotImplementedError` (HTTP has no listing
+    HTTP server; `list` raises `StorageNotSupportedException` (HTTP has no listing
     API). Every write, delete, metadata, copy, move, format, mkdir, and
     rmdir method is inherited from `ReadOnlyStorageMixin` and raises
-    `NotImplementedError`. Transaction methods raise `NotImplementedError`
+    `StorageNotSupportedException`. Transaction methods raise `StorageNotSupportedException`
     via `TransactionNotSupportedMixin`.
 
     Attributes:
@@ -175,7 +176,7 @@ class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
 
     def list(self) -> list[str]:
         """List documents from HTTP server (not supported)."""
-        raise NotImplementedError("HTTP servers do not provide a directory listing API.")
+        raise StorageNotSupportedException("HTTP servers do not provide a directory listing API.")
 
     def get(self, path: str) -> bytes:
         """Get HTTP content from the specified path.

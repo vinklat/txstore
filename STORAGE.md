@@ -50,11 +50,11 @@ primitives do not.
 | -- | -- | -- | -- | -- | -- | -- |
 | `fs` | `StorageFS` | yes | yes | yes | xattr | Root is the URL path, `fs:///<absolute path>`; authority and relative path → [VALIDATION.md](VALIDATION.md#storage-urls). Key layout and `format()` → [Backend specifics](#backend-specifics). |
 | `s3` | `StorageS3` | yes | yes | yes | user metadata + canned ACL | URL `s3://<endpoint>/<bucket>[/<prefix>]` → [VALIDATION.md](VALIDATION.md#s3-url-path-split). Listings, directories, and `format()` → [Backend specifics](#backend-specifics). |
-| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list` and every write, metadata, copy, move, directory, and transaction method → `NotImplementedError`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
+| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list` and every write, metadata, copy, move, directory, and transaction method → `StorageNotSupportedException`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
 | `null` | `StorageNull` | no | yes | no | none | `WriteOnlyStorageMixin` + `TransactionNotSupportedMixin`; write-only sink for digest-only transfers; operations → [StorageNull operations](#storagenull-operations). Not URL-routable → [VALIDATION.md](VALIDATION.md#storage-urls). |
 
-An unsupported operation → `NotImplementedError`, never `AttributeError`; the capability mixins in
-`txstore/_capabilities.py` provide the stubs.
+An unsupported operation → `StorageNotSupportedException`, also a `NotImplementedError`, never
+`AttributeError`; the capability mixins in `txstore/_capabilities.py` provide the stubs.
 
 ### Backend specifics
 
@@ -71,7 +71,7 @@ An unsupported operation → `NotImplementedError`, never `AttributeError`; the 
 | Operation | Behavior |
 | -- | -- |
 | Writes, metadata methods, `delete`, `format()`, `rmdir` | No-ops; a write drains its stream and counts the bytes. |
-| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `NotImplementedError`. |
+| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `StorageNotSupportedException`. |
 
 ## Construction
 

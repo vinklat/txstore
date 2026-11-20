@@ -27,6 +27,7 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
 | -- | -- | -- |
 | `StorageException` | `txstore/base.py` | A backend operation, transaction, history, or lock step fails → [STORAGE.md](STORAGE.md#failure-semantics). |
 | `StorageNotFoundException` | `txstore/base.py` | The named object is missing → [STORAGE.md](STORAGE.md#storage-abi); subclass of `StorageException`. |
+| `StorageTooLargeException` | `txstore/base.py` | An object read with `max_size` is larger → [STORAGE.md](STORAGE.md#storage-abi); subclass of `StorageException`. |
 | `StorageNotSupportedException` | `txstore/base.py` | A read-only, write-only, or non-transactional backend is asked for an operation it lacks → [STORAGE.md](STORAGE.md#backends); subclass of `StorageException` and `NotImplementedError`. |
 
 ## Other errors
@@ -39,6 +40,7 @@ Owns: exception classes, the conditions that raise them, and raising and chainin
 | `ValueError` | Invalid canned ACL → [VALIDATION.md](VALIDATION.md#s3-canned-acls). |
 | `ValueError` | Invalid environment value → [VALIDATION.md](VALIDATION.md#environment-values). |
 | `ValueError` | Out-of-range retention → [VALIDATION.md](VALIDATION.md#history-retention). |
+| `ValueError` | Invalid `max_size` passed to a capped read → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 | `ValueError` | Out-of-range timestamp passed to `Timestamp`; one in a history record raises `StorageException` instead → [STORAGE.md](STORAGE.md#timestamps). |
 | `ValueError` | Out-of-range transaction id → [STORAGE.md](STORAGE.md#lifecycle). |
 

@@ -21,7 +21,7 @@ definition.
 | `STYLE.md` | Coding conventions, logging rules, performance rules; prevails on style |
 | `STRUCTURE.md` | Layout, module ownership, public façade, internal import directions |
 | `STORAGE.md` | Storage ABI, backends, construction, transactions, footmarks and their wire format, timestamps, history, S3 ACL and metadata rules, digests |
-| `VALIDATION.md` | Input constraints at the URL, path, configuration, and retention boundaries |
+| `VALIDATION.md` | Input constraints at the URL, path, configuration, retention, and read size cap boundaries |
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
 | `CONFIG.md` | `make_storage` and retention settings, `TXSTORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |

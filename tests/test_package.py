@@ -46,6 +46,7 @@ _EXPECTED_ALL = sorted(
         "StorageNotSupportedException",
         "StorageNull",
         "StorageS3",
+        "StorageTooLargeException",
         "StorageType",
         "Timestamp",
         "TransactionHistory",

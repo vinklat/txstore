@@ -158,7 +158,7 @@ class WriteOnlyStorageMixin:
         """Not supported (write-only storage)."""
         raise StorageNotSupportedException(WRITE_ONLY_MSG)
 
-    def get(self, path: str) -> bytes:
+    def get(self, path: str, *, max_size: int | None = None) -> bytes:
         """Not supported (write-only storage)."""
         raise StorageNotSupportedException(WRITE_ONLY_MSG)
 

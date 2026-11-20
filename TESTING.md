@@ -40,7 +40,7 @@ not copied here.
 
 | Area | Required assertion |
 | -- | -- |
-| Storage backends | Shared `Storage` contract, backend-specific behavior, the error mapping of every library failure with its metric, a failure while a `get_stream` body is read, seeking where the backend seeks, and the transaction lifecycle (begin, commit, discard, revert, staged metadata) where supported, including a primitive failing mid-commit, mid-revert, mid-discard, and mid-staging. |
+| Storage backends | Shared `Storage` contract, backend-specific behavior, the error mapping of every library failure with its metric, a failure while a `get_stream` body is read, seeking where the backend seeks, the `max_size` cap at and over its limit, and the transaction lifecycle (begin, commit, discard, revert, staged metadata) where supported, including a primitive failing mid-commit, mid-revert, mid-discard, and mid-staging. |
 | Capability stubs | Read-only, write-only, and non-transactional backends prove unsupported operations raise `StorageNotSupportedException`, caught as both `StorageException` and `NotImplementedError`. |
 | Construction | URL dispatch, missing-host and empty-URL refusal, `create_path`, credential resolution and refusal, a default ACL never becoming the bucket ACL, `NO_ACL`, TLS verification for S3 and HTTP, the TLS-off warning, and URL credential redaction, chained causes included. |
 | HTTP backend | Redirects refused for every read method, header allowlist, credentials absent from `repr`, logs, and messages. |

@@ -44,6 +44,13 @@ def test_checksum_open_read_matches_calc_digests() -> None:
     assert co.get_digests() == calc_digests(data)
 
 
+def test_checksum_open_takes_the_name_of_a_named_file() -> None:
+    fp = io.BytesIO(b"x")
+    fp.name = "pool/a.deb"
+    assert ChecksumOpen(fp).name == "pool/a.deb"
+    assert ChecksumOpen(io.BytesIO(b"x")).name is None
+
+
 def test_checksum_open_close_closes_the_wrapped_file_once() -> None:
     buf = io.BytesIO(b"data")
     co = ChecksumOpen(buf)

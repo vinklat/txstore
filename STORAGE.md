@@ -10,13 +10,14 @@ Callers import from the `txstore` façade, never from a submodule →
 
 ## Storage ABI
 
-Every backend implements the abstract methods; `put` and `transfer` are shared.
+Every backend implements the abstract methods; `put` is shared over `put_stream`, and `get` and
+`transfer` over `get_stream`.
 
 | Method | Contract |
 | -- | -- |
 | `get_type()` | Backend `StorageType` (`fs`, `s3`, `http`, `null`). |
 | `list()` | Relative paths of regular objects; footmarks and hidden objects are excluded. |
-| `get(path)` / `get_stream(path)` | Object bytes / binary stream; missing object → `StorageNotFoundException`. |
+| `get(path, *, max_size=None)` / `get_stream(path)` | Object bytes / binary stream; missing object → `StorageNotFoundException`. |
 | `get_stream` body reads | A backend error raised while the body is read → `StorageException` chained from it, with one read error counted; on `http` the body is decoded per its `Content-Encoding`. |
 | `get_stream` seeking | Only an `fs` stream seeks and has `tell` and `fileno`; on the other backends those raise `io.UnsupportedOperation`, as an unseekable `io` stream does. |
 | `exists(path)` | Existence probe; backend errors other than "not found" → `StorageException`. |
@@ -38,7 +39,10 @@ Every backend implements the abstract methods; `put` and `transfer` are shared.
 | `move` onto an alias in a transaction | The no-op holds only when the paths name one object as the transaction sees it; a write staged on only one of them, or a staged delete of the destination, makes the move a real move. |
 | `mkdir(path)` / `rmdir(path)` | Directory lifecycle; no-ops where the backend has no directories. A file at the `mkdir` path → `StorageException`. |
 | `format()` | Destructive reset of the whole storage root; see per-backend rows below. |
-| `transfer(path_src, storage_dst, path_dst=None, acl=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
+| `transfer(path_src, storage_dst, path_dst=None, acl=None, *, max_size=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
+| Size cap | `max_size` caps `get` and `transfer` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
+| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read, never more, with one read error counted on the source. |
+| Over the size cap in `transfer` | The destination fails as from a failing stream, keeping no object, and `transfer` raises `StorageTooLargeException` chained from its error. |
 
 Streaming: `CHUNK_SIZE` is 1 MiB and HTTP requests use `REQUEST_TIMEOUT` of 30 s. `StorageMetrics`
 counts read/write/delete objects, bytes, and errors per instance; each backend counts its own

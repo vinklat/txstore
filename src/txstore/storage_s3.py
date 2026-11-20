@@ -456,14 +456,6 @@ class StorageS3(FootmarkMixin, Storage):
         logger.debug("list S3 objects from bucket %s ...", self.bucket)
         return self._overlay_list()
 
-    def get(self, path: str) -> bytes:
-        """Retrieve the content of `path` from the bucket."""
-        logger.debug("S3 GET %s...", path)
-        with self.get_stream(path) as stream:
-            data = stream.read()
-        self.metrics.read_bytes_inc(len(data))
-        return data
-
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Return the metadata of `path`."""
         logger.debug("S3 GET metadata %s...", path)

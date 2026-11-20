@@ -80,7 +80,7 @@ class _ContentReader:
 class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
     """Read-only storage backend for HTTP/HTTPS resources.
 
-    Implements `get`, `get_stream`, `get_metadata`, `exists` against an
+    Implements `get_stream` (and so the shared `get`), `get_metadata`, `exists` against an
     HTTP server; `list` raises `StorageNotSupportedException` (HTTP has no listing
     API). Every write, delete, metadata, copy, move, format, mkdir, and
     rmdir method is inherited from `ReadOnlyStorageMixin` and raises
@@ -208,31 +208,6 @@ class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
     def list(self) -> list[str]:
         """List documents from HTTP server (not supported)."""
         raise StorageNotSupportedException("HTTP servers do not provide a directory listing API.")
-
-    def get(self, path: str) -> bytes:
-        """Get HTTP content from the specified path.
-
-        Args:
-            path: The path to get the content from.
-
-        Raises:
-            StorageNotFoundException: If the object is missing (HTTP 404).
-            StorageException: If the request fails, is redirected, or answers
-                another error status.
-
-        Returns:
-            bytes: The content from the specified path.
-        """
-        try:
-            response = self._request("GET", path)
-            self._raise_for_status("GET", response)
-        except StorageException:
-            self.metrics.read_errors_inc()
-            raise
-
-        self.metrics.read_bytes_inc(len(response.content))
-        self.metrics.read_objects_inc()
-        return response.content
 
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Get document metadata from HEAD headers at the specified path.

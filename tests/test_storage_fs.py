@@ -32,6 +32,7 @@ from txstore import (
     StorageFS,
     StorageNotFoundException,
     StorageNull,
+    StorageTooLargeException,
     StorageType,
     TransactionHistory,
 )
@@ -940,3 +941,12 @@ def test_storage_fs_copy_or_move_with_auto_mkdir_creates_the_parent(
         storage.transaction_commit()
 
     assert storage.get("sub/b.txt") == b"a"
+
+
+def test_storage_fs_capped_transfer_leaves_no_object_or_temp_file(storage: StorageFS) -> None:
+    """→ STORAGE.md#storage-abi: a source over `max_size` writes nothing at the destination."""
+    storage.put("big.bin", b"x" * 100)
+    with pytest.raises(StorageTooLargeException):
+        storage.transfer("big.bin", storage, "copy.bin", max_size=10)
+    assert os.listdir(storage.base_dir) == ["big.bin"]
+    assert storage.metrics.write_errors_total == 1

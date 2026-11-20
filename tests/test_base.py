@@ -7,8 +7,8 @@ Backend-specific behavior lives in `test_storage_<backend>.py`; this file covers
 from __future__ import annotations
 
 import io
-from collections.abc import Sequence
-from typing import IO
+from collections.abc import Callable, Sequence
+from typing import IO, Any, cast
 
 import pytest
 
@@ -19,6 +19,7 @@ from txstore import (
     StorageException,
     StorageNotFoundException,
     StorageNull,
+    StorageTooLargeException,
     StorageType,
 )
 from txstore.base import GuardedStream
@@ -38,14 +39,11 @@ class _MemoryStorage(Storage):
     def list(self) -> list[str]:
         return sorted(self.objects)
 
-    def get(self, path: str) -> bytes:
+    def get_stream(self, path: str) -> IO[bytes]:
         try:
-            return self.objects[path]
+            return io.BytesIO(self.objects[path])
         except KeyError as exc:
             raise StorageNotFoundException(f"Object not found: {path}") from exc
-
-    def get_stream(self, path: str) -> io.BytesIO:
-        return io.BytesIO(self.get(path))
 
     def get_metadata(self, path: str) -> dict[str, str]:
         return {}
@@ -279,3 +277,133 @@ def test_guarded_stream_close_closes_the_body_once() -> None:
     assert inner.closed
     assert stream.closed
     stream.close()
+
+
+# --- size cap → STORAGE.md#storage-abi, VALIDATION.md#read-size-cap -----------------------------
+
+
+class _Endless(io.RawIOBase):
+    """A body that never ends, as a hostile origin sends it; counts the bytes pulled."""
+
+    def __init__(self) -> None:
+        self.pulled = 0
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        self.pulled += len(buffer)
+        return len(buffer)
+
+
+class _EndlessStorage(_MemoryStorage):
+    def __init__(self) -> None:
+        super().__init__()
+        self.body = _Endless()
+
+    def get_stream(self, path: str) -> IO[bytes]:
+        return cast(IO[bytes], self.body)
+
+
+@pytest.mark.parametrize(("body", "max_size"), [(b"", 0), (b"abc", 3), (b"abc", 4)])
+def test_get_returns_an_object_within_the_cap(body: bytes, max_size: int) -> None:
+    storage = _MemoryStorage({"a.bin": body})
+    assert storage.get("a.bin", max_size=max_size) == body
+    assert storage.metrics.dump()["read_bytes"] == len(body)
+
+
+@pytest.mark.parametrize(("body", "max_size"), [(b"a", 0), (b"abcd", 3)])
+def test_get_refuses_an_object_over_the_cap(body: bytes, max_size: int) -> None:
+    storage = _MemoryStorage({"a.bin": body})
+    with pytest.raises(StorageTooLargeException, match=f"a.bin is larger than {max_size} bytes"):
+        storage.get("a.bin", max_size=max_size)
+    assert storage.metrics.read_errors_total == 1
+    assert storage.metrics.dump()["read_bytes"] == 0
+
+
+def test_get_stops_reading_an_endless_body_at_the_cap() -> None:
+    storage = _EndlessStorage()
+    with pytest.raises(StorageTooLargeException):
+        storage.get("a.bin", max_size=10)
+    assert storage.body.pulled == 11
+
+
+def test_transfer_stops_reading_an_endless_body_at_the_cap() -> None:
+    source = _EndlessStorage()
+    dst = _MemoryStorage()
+    with pytest.raises(StorageTooLargeException):
+        source.transfer("a.bin", dst, max_size=10)
+    assert source.body.pulled == 11
+    assert dst.objects == {}
+
+
+def test_transfer_within_the_cap_returns_the_digests() -> None:
+    digests = _MemoryStorage({"a.bin": b"abc"}).transfer("a.bin", _MemoryStorage(), max_size=3)
+    assert digests["Size"] == "3"
+
+
+def test_transfer_over_the_cap_raises_the_size_class_past_the_destination_wrapper() -> None:
+    """`StorageNull` wraps the refusal as a write failure; `transfer` restores the class."""
+    source = _MemoryStorage({"a.bin": b"abcd"})
+    sink = StorageNull()
+    with pytest.raises(StorageTooLargeException, match="a.bin is larger than 3 bytes") as excinfo:
+        source.transfer("a.bin", sink, max_size=3)
+    wrapped = excinfo.value.__cause__
+    assert isinstance(wrapped, StorageException)
+    assert isinstance(wrapped.__cause__, StorageTooLargeException)
+    assert source.metrics.read_errors_total == 1
+    assert sink.metrics.write_errors_total == 1
+
+
+def test_transfer_without_the_cap_lets_a_destination_failure_through() -> None:
+    class _Refusing(_MemoryStorage):
+        def put_stream(
+            self,
+            path: str,
+            stream: IO[bytes],
+            metadata: dict[str, str] | None = None,
+            acl: str | None = None,
+        ) -> None:
+            raise StorageException("disk full")
+
+    with pytest.raises(StorageException, match="disk full") as excinfo:
+        _MemoryStorage({"a.bin": b"abcd"}).transfer("a.bin", _Refusing(), max_size=10)
+    assert not isinstance(excinfo.value, StorageTooLargeException)
+
+
+@pytest.mark.parametrize(
+    "max_size", [-1, True, 1.5, "10"], ids=["negative", "bool", "float", "str"]
+)
+@pytest.mark.parametrize(
+    "read",
+    [lambda s, m: s.get("gone", max_size=m), lambda s, m: s.transfer("gone", s, max_size=m)],
+    ids=["get", "transfer"],
+)
+def test_capped_reads_refuse_an_invalid_max_size_before_any_io(
+    read: Callable[[Storage, Any], object], max_size: object
+) -> None:
+    """A missing object would raise `StorageNotFoundException`; the argument is checked first."""
+    with pytest.raises(ValueError, match="max_size must be None or an integer of 0 or more"):
+        read(_MemoryStorage(), max_size)
+
+
+def test_transfer_keeps_refusing_a_destination_that_reads_again() -> None:
+    """A destination that swallows the refusal and reads on gets it again, never more bytes."""
+
+    class _Retrying(_MemoryStorage):
+        def put_stream(
+            self,
+            path: str,
+            stream: IO[bytes],
+            metadata: dict[str, str] | None = None,
+            acl: str | None = None,
+        ) -> None:
+            with pytest.raises(StorageTooLargeException):
+                stream.read()
+            stream.read(1)
+
+    source = _EndlessStorage()
+    with pytest.raises(StorageTooLargeException):
+        source.transfer("a.bin", _Retrying(), max_size=10)
+    assert source.body.pulled == 11
+    assert source.metrics.read_errors_total == 1

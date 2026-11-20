@@ -357,19 +357,6 @@ class StorageFS(FootmarkMixin, Storage):
         logger.debug("Listing files in %s", self.base_dir)
         return self._overlay_list()
 
-    def get(self, path: str) -> bytes:
-        """Return the complete contents of the file at `path`.
-
-        Raises:
-            StorageNotFoundException: If the file does not exist.
-            StorageException: If the file is marked for deletion or cannot be read.
-        """
-        logger.debug("Reading file: %s", path)
-        with self.get_stream(path) as f:
-            data = f.read()
-        self.metrics.read_bytes_inc(len(data))
-        return data
-
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Return extended-attribute metadata for `path`.
 

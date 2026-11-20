@@ -26,6 +26,7 @@ from txstore import (
     StorageHTTP,
     StorageNotFoundException,
     StorageNotSupportedException,
+    StorageTooLargeException,
     StorageType,
     make_storage,
 )
@@ -335,6 +336,23 @@ def test_storage_http_get_stream_reads_in_pieces_and_does_not_seek(storage: Stor
         assert not stream.seekable()
         with pytest.raises(io.UnsupportedOperation):
             stream.seek(0)
+
+
+@responses.activate
+def test_storage_http_get_caps_the_decoded_size(storage: StorageHTTP) -> None:
+    """A gzip body far under the cap still decodes past it → STORAGE.md#storage-abi."""
+    body = b"x" * 5000
+    compressed = gzip.compress(body)
+    assert len(compressed) < 100
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/gz",
+        body=compressed,
+        headers={"Content-Encoding": "gzip"},
+    )
+    assert storage.get("gz", max_size=5000) == body
+    with pytest.raises(StorageTooLargeException, match="gz is larger than 4999 bytes"):
+        storage.get("gz", max_size=4999)
 
 
 @responses.activate

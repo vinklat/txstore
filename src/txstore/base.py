@@ -66,6 +66,69 @@ class StorageNotSupportedException(StorageException, NotImplementedError):
         super().__init__(message)
 
 
+class StorageTooLargeException(StorageException):
+    """Raised when an object is larger than the `max_size` a read is capped at.
+
+    → [STORAGE.md](STORAGE.md#storage-abi).
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+def _check_max_size(max_size: int | None) -> None:
+    """Refuse a `max_size` other than None or an integer of 0 or more.
+
+    → [VALIDATION.md](VALIDATION.md#read-size-cap).
+
+    Raises:
+        ValueError: If `max_size` is a bool, not an integer, or negative.
+    """
+    if max_size is None:
+        return
+    if isinstance(max_size, bool) or not isinstance(max_size, int) or max_size < 0:
+        raise ValueError(f"max_size must be None or an integer of 0 or more, not {max_size!r}")
+
+
+class _CappedReader:
+    """Reader that refuses a body larger than `max_size` without reading on.
+
+    It pulls at most `max_size + 1` bytes from `stream`: the extra byte proves the body too large.
+    """
+
+    def __init__(
+        self, stream: IO[bytes], max_size: int | None, path: str, metrics: StorageMetrics
+    ) -> None:
+        self._stream = stream
+        self._max_size = max_size
+        self._path = path
+        self._metrics = metrics
+        self._size = 0
+        # The refusal raised, kept so `transfer` can surface it past the destination's wrapper.
+        self.error: StorageTooLargeException | None = None
+
+    def read(self, size: int = -1) -> bytes:
+        """Read up to `size` bytes, never past `max_size + 1` in total.
+
+        Raises:
+            StorageTooLargeException: Once the body is found larger than `max_size`.
+        """
+        if self.error is not None:
+            raise self.error
+        if self._max_size is None:
+            return self._stream.read(size)
+        remaining = self._max_size + 1 - self._size
+        data = self._stream.read(remaining if size < 0 else min(size, remaining))
+        self._size += len(data)
+        if self._size > self._max_size:
+            self._metrics.read_errors_inc()
+            self.error = StorageTooLargeException(
+                f"{self._path} is larger than {self._max_size} bytes"
+            )
+            raise self.error
+        return data
+
+
 class GuardedStream(io.RawIOBase):
     """Read-only view of a backend body stream that raises backend read errors as storage errors.
 
@@ -207,9 +270,33 @@ class Storage(ABC):
     def list(self) -> builtins.list[str]:
         """List all (regular, non-hidden) objects in the storage."""
 
-    @abstractmethod
-    def get(self, path: str) -> bytes:
-        """Return the full content of the object at `path`."""
+    def get(self, path: str, *, max_size: int | None = None) -> bytes:
+        """Return the full content of the object at `path`, read through `get_stream`.
+
+        Args:
+            path: Object path.
+            max_size: Largest size accepted, in bytes; None reads any size
+                → [STORAGE.md](STORAGE.md#storage-abi).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageNotFoundException: If the object is missing.
+            StorageTooLargeException: If the object is larger than `max_size`; at most
+                `max_size + 1` bytes are read.
+            StorageException: If the object cannot be opened or read.
+        """
+        _check_max_size(max_size)
+        with self.get_stream(path) as stream:
+            if max_size is None:
+                data = stream.read()
+            else:
+                reader = _CappedReader(stream, max_size, path, self.metrics)
+                buffer = bytearray()
+                while chunk := reader.read(CHUNK_SIZE):
+                    buffer += chunk
+                data = bytes(buffer)
+        self.metrics.read_bytes_inc(len(data))
+        return data
 
     @abstractmethod
     def get_metadata(self, path: str) -> dict[str, Any]:
@@ -308,6 +395,8 @@ class Storage(ABC):
         storage_dst: Storage,
         path_dst: str | None = None,
         acl: str | None = None,
+        *,
+        max_size: int | None = None,
     ) -> dict[str, str]:
         """Stream an object from this storage to another, computing digests.
 
@@ -316,18 +405,34 @@ class Storage(ABC):
             storage_dst: Destination storage instance.
             path_dst: Destination path. Defaults to `path_src`.
             acl: Optional ACL for the destination object.
+            max_size: Largest size accepted, in bytes; None transfers any size
+                → [STORAGE.md](STORAGE.md#storage-abi).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageTooLargeException: If the source is larger than `max_size`; the destination
+                keeps no object.
 
         Returns:
             Digests of the transferred object (`MD5Sum`, `SHA1`, `SHA256`,
             `SHA512`, `Size`).
         """
+        _check_max_size(max_size)
         if path_dst is None:
             path_dst = path_src
 
         with self.get_stream(path_src) as fsrc:
-            fchecksums = ChecksumOpen(fsrc)
-            # Every `put_stream` only calls `read`, which `ChecksumOpen` provides.
-            storage_dst.put_stream(path_dst, cast(IO[bytes], fchecksums), acl=acl)
+            capped = _CappedReader(fsrc, max_size, path_src, self.metrics)
+            fchecksums = ChecksumOpen(cast(IO[bytes], capped))
+            try:
+                # Every `put_stream` only calls `read`, which `ChecksumOpen` provides.
+                storage_dst.put_stream(path_dst, cast(IO[bytes], fchecksums), acl=acl)
+            except StorageException as exc:
+                # The destination wraps the refusal as its own write failure; the caller
+                # needs the size class back.
+                if capped.error is None or exc is capped.error:
+                    raise
+                raise StorageTooLargeException(str(capped.error)) from exc
 
         # The destination counts its own write in `put_stream`.
         self.metrics.read_bytes_inc(fchecksums.size)

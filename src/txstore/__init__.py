@@ -26,6 +26,7 @@ from txstore.base import (
     StorageException,
     StorageNotFoundException,
     StorageNotSupportedException,
+    StorageTooLargeException,
     StorageType,
 )
 from txstore.factory import NO_ACL, make_storage
@@ -93,6 +94,7 @@ __all__ = [
     "StorageNotSupportedException",
     "StorageNull",
     "StorageS3",
+    "StorageTooLargeException",
     "StorageType",
     "Timestamp",
     "TransactionHistory",

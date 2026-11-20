@@ -25,6 +25,7 @@ from txstore import (
     StorageException,
     StorageNotFoundException,
     StorageS3,
+    StorageTooLargeException,
     StorageType,
     Timestamp,
     TransactionHistory,
@@ -990,3 +991,12 @@ def test_create_bucket_maps_a_bucket_create_failure(storage: StorageS3) -> None:
     ):
         storage.create_bucket()
     assert raised.value.__cause__ is _DENIED
+
+
+def test_storage_s3_capped_transfer_leaves_no_object(storage: StorageS3) -> None:
+    """→ STORAGE.md#storage-abi: a source over `max_size` writes nothing at the destination."""
+    _put(storage, "big.bin", b"x" * 100)
+    with pytest.raises(StorageTooLargeException):
+        storage.transfer("big.bin", storage, "copy.bin", max_size=10)
+    assert not storage.exists("copy.bin")
+    assert storage.metrics.write_errors_total == 1

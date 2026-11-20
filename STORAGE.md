@@ -49,8 +49,10 @@ Streaming: `CHUNK_SIZE` is 1 MiB. HTTP requests use `REQUEST_TIMEOUT` of 30 s pe
 socket read, with no total deadline → [ROADMAP.md](ROADMAP.md#ideas). `StorageMetrics` counts
 read/write/delete objects, bytes, and errors per instance; each backend counts its own written bytes
 in `put_stream`, so a `transfer` counts the source's read and the destination's write once each.
-Only the public verbs count: history and lock I/O and the commit, discard, and revert primitives do
-not.
+A read counts its object when `get_stream` opens it, and its bytes only through `get`,
+`get_digests`, or a `transfer` source, so a caller reading `get_stream` itself counts none; a failed
+open, a failed body read, or a size-cap refusal counts a read error. Only the public verbs count:
+history and lock I/O and the commit, discard, and revert primitives do not.
 
 ## Backends
 

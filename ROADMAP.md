@@ -19,6 +19,7 @@ or the work is planned; drop it when it no longer applies.
 | Generated API reference in `docs/reference/` | The façade stabilizes (1.0.0) | [STRUCTURE.md](STRUCTURE.md#layout) |
 | GCS and Azure Blob backends | A user needs transactions on another object store | [STORAGE.md](STORAGE.md#backends) |
 | Async API; the per-thread writer-lock claim in `history_lock` then becomes per task (a `ContextVar` of a `frozenset`) | A caller needs concurrent transfers without threads | [STORAGE.md](STORAGE.md#storage-abi) |
+| One owner of read metrics: `GuardedStream` counts the bytes a caller reads and an object only once its body ends cleanly, so read objects and read errors stay disjoint | A caller needs read metrics from `get_stream` itself, or with the mixin-owned pipeline (1.0.0) | [STORAGE.md](STORAGE.md#storage-abi) |
 | Total deadline on `get`, `get_stream`, and `transfer` | A hostile origin trickles a body under the 0.1.3 size cap slowly enough to stall a caller | [STORAGE.md](STORAGE.md#storage-abi) |
 | Renewable S3 lock | Critical sections approach the S3 lock TTL | [STORAGE.md](STORAGE.md#locking) |
 | Transactional writes as one manifest object | Partial commits on unreachable backends cost real data | [STORAGE.md](STORAGE.md#failure-semantics) |

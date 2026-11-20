@@ -11,6 +11,7 @@ import gzip
 import io
 import logging
 import traceback
+import tracemalloc
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -367,6 +368,34 @@ def test_storage_http_get_caps_the_decoded_size(storage: StorageHTTP) -> None:
     assert storage.get("gz", max_size=5000) == body
     with pytest.raises(StorageTooLargeException, match="gz is larger than 4999 bytes"):
         storage.get("gz", max_size=4999)
+
+
+@pytest.mark.parametrize("layers", [1, 2], ids=["gzip", "gzip-gzip"])
+@responses.activate
+def test_storage_http_get_refuses_a_gzip_bomb_without_decoding_it(
+    storage: StorageHTTP, layers: int
+) -> None:
+    """A small body decoding to 64 MiB is refused within a few MiB of memory.
+
+    Holds from urllib3 2.6 → ROADMAP.md#known-deviations.
+    """
+    bomb = bytes(64 * 1024 * 1024)
+    for _ in range(layers):
+        bomb = gzip.compress(bomb)
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/bomb",
+        body=bomb,
+        headers={"Content-Encoding": ", ".join(["gzip"] * layers)},
+    )
+    tracemalloc.start()
+    try:
+        with pytest.raises(StorageTooLargeException):
+            storage.get("bomb", max_size=1024)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 16 * 1024 * 1024
 
 
 @responses.activate

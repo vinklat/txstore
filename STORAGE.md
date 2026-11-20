@@ -30,7 +30,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `put(path, data, metadata=None, acl=None)` / `put_stream(...)` | Write bytes / stream with optional metadata and a backend ACL (`fs` octal mode → [VALIDATION.md](VALIDATION.md#filename-safety), `s3` canned ACL → [S3 ACL rules](#s3-acl-rules)). |
 | `put` metadata on `fs` | Best-effort: an xattr failure after the bytes are written is logged, not raised, and the object stays written. |
 | `put_stream` from a failing stream | → `StorageException` chained from the stream's error, one write error counted, and no object or temp file left. |
-| `put_stream` from a stream raising `StorageException` | The exception propagates unchanged, as from a `transfer` source on a failed read or a size-cap refusal. |
+| `put_stream` from a stream raising `StorageException` | The exception propagates unchanged, with one write error counted and no object or temp file left, as from a `transfer` source on a failed read or a size-cap refusal. |
 | `add_metadata(path, metadata, acl=None)` | Merge metadata onto an existing object. |
 | `add_metadata` failures | On a readable backend, a missing object or any backend failure → `StorageException`. On `fs`, a filesystem without xattr support skips the write with a warning. |
 | `delete(path)` / `delete_metadata(path)` / `delete_metadata_fields(path, keys)` | Remove the object / all metadata / named keys; on a readable backend, `delete` of a missing object → `StorageNotFoundException`. |
@@ -64,12 +64,11 @@ commit, discard, and revert primitives do not.
 | -- | -- | -- | -- | -- | -- | -- |
 | `fs` | `StorageFS` | yes | yes | yes | xattr | Root is the URL path, `fs:///<absolute path>`; authority and relative path → [VALIDATION.md](VALIDATION.md#storage-urls). Key layout and `format()` → [Backend specifics](#backend-specifics). |
 | `s3` | `StorageS3` | yes | yes | yes | user metadata + canned ACL | URL `s3://<endpoint>/<bucket>[/<prefix>]` → [VALIDATION.md](VALIDATION.md#s3-url-path-split). Listings, directories, and `format()` → [Backend specifics](#backend-specifics). |
-| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list` and every write, metadata, copy, move, directory, and transaction method → `StorageNotSupportedException`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
+| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list`, `format()`, and every write, metadata-changing, copy, move, directory, and transaction method → `StorageNotSupportedException`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
 | `null` | `StorageNull` | no | yes | no | none | `WriteOnlyStorageMixin` + `TransactionNotSupportedMixin`; write-only sink for digest-only transfers; operations → [StorageNull operations](#storagenull-operations). Not URL-routable → [VALIDATION.md](VALIDATION.md#storage-urls). |
 
-An unsupported operation → `StorageNotSupportedException`, never `AttributeError` →
-[EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions); the capability mixins in
-`txstore/_capabilities.py` provide the stubs.
+An unsupported operation → `StorageNotSupportedException`, never `AttributeError`; the capability
+mixins in `txstore/_capabilities.py` provide the stubs.
 
 ### Backend specifics
 
@@ -86,7 +85,8 @@ An unsupported operation → `StorageNotSupportedException`, never `AttributeErr
 | Operation | Behavior |
 | -- | -- |
 | Writes, metadata methods, `delete`, `format()`, `rmdir` | No-ops; a write drains its stream and counts the bytes. |
-| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `StorageNotSupportedException`; an invalid `max_size` → `ValueError` first → [VALIDATION.md](VALIDATION.md#read-size-cap). |
+| Every read, `list`, `copy`, `move`, `mkdir`, and transaction method except `in_transaction()`, which returns `False` | → `StorageNotSupportedException`. |
+| A capped read with an invalid `max_size` | → `ValueError` before `StorageNotSupportedException` → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 
 ## Construction
 

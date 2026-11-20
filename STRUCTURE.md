@@ -8,7 +8,7 @@ Owns: directories, module ownership, the public façade, and internal import dir
 | Path | Owns |
 | -- | -- |
 | `src/txstore/__init__.py` | Public façade: `__all__` is the supported surface; submodules are not. |
-| `src/txstore/base.py` | `Storage` ABI, `StorageType`, storage exceptions, `CHUNK_SIZE`, `REQUEST_TIMEOUT`. |
+| `src/txstore/base.py` | `Storage` ABI, `StorageType`, storage exceptions, `GuardedStream`, `CHUNK_SIZE`, `REQUEST_TIMEOUT`. |
 | `src/txstore/storage_fs.py`, `storage_s3.py`, `storage_http.py`, `storage_null.py` | One backend each → [STORAGE.md](STORAGE.md#backends). |
 | `src/txstore/factory.py` | `make_storage()` and `NO_ACL`. |
 | `src/txstore/transaction.py` | `FootmarkMixin` (lifecycle, overlay, primitives), `TransactionModel`, `is_transactional`. |

@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import base64
 import gzip
+import io
 import logging
 import traceback
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -285,6 +287,54 @@ def test_storage_http_get_stream_returns_raw(storage: StorageHTTP) -> None:
     )
     stream = storage.get_stream("big")
     assert stream.read() == b"chunk1chunk2"
+
+
+class _DroppedConnection(io.RawIOBase):
+    """A socket that yields `head`, then fails as a dropped connection does."""
+
+    def __init__(self, head: bytes) -> None:
+        self._head = head
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        if not self._head:
+            raise OSError("connection reset")
+        n = min(len(buffer), len(self._head))
+        buffer[:n] = self._head[:n]
+        self._head = self._head[n:]
+        return n
+
+
+@responses.activate
+def test_storage_http_get_stream_maps_a_body_read_failure(storage: StorageHTTP) -> None:
+    """→ STORAGE.md#storage-abi: urllib3's read error reaches the caller as `StorageException`."""
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/big",
+        body=io.BufferedReader(_DroppedConnection(b"head")),
+        headers={"Content-Length": "100"},
+    )
+    with (
+        storage.get_stream("big") as stream,
+        pytest.raises(StorageException, match="Error reading http://repo.example.com/big") as exc,
+    ):
+        stream.read()
+    assert isinstance(exc.value.__cause__, requests.RequestException)
+    assert storage.metrics.read_errors_total == 1
+
+
+@responses.activate
+def test_storage_http_get_stream_reads_in_pieces_and_does_not_seek(storage: StorageHTTP) -> None:
+    responses.add(responses.GET, "http://repo.example.com/big", body=b"chunk1chunk2")
+    with storage.get_stream("big") as stream:
+        assert stream.read(3) == b"chu"
+        assert stream.read(100) == b"nk1chunk2"
+        assert stream.read(1) == b""
+        assert not stream.seekable()
+        with pytest.raises(io.UnsupportedOperation):
+            stream.seek(0)
 
 
 @responses.activate

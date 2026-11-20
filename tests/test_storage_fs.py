@@ -384,16 +384,40 @@ def test_storage_fs_read_refuses_a_link_swapped_in_after_resolution(
     assert storage.metrics.read_errors_total == 1
 
 
-def test_storage_fs_get_maps_a_read_failure(storage: StorageFS) -> None:
+class _FailingRead(io.BytesIO):
+    """An opened file whose body read fails, as a disk error does."""
+
+    def read(self, size: int | None = -1) -> bytes:
+        raise OSError("io")
+
+
+@pytest.mark.parametrize(
+    "read",
+    [lambda s: s.get("f.txt"), lambda s: s.get_stream("f.txt").read(4)],
+    ids=["get", "get_stream"],
+)
+def test_storage_fs_maps_a_body_read_failure(
+    storage: StorageFS, read: Callable[[StorageFS], bytes]
+) -> None:
+    """→ STORAGE.md#storage-abi: a read error on the body is a `StorageException`."""
     storage.put("f.txt", b"data")
-    broken = io.BytesIO()
-    broken.read = lambda *_: (_ for _ in ()).throw(OSError("io"))  # type: ignore[method-assign]
     with (
-        patch.object(storage, "get_stream", return_value=broken),
-        pytest.raises(StorageException, match="Error reading f.txt"),
+        patch("builtins.open", return_value=_FailingRead()),
+        pytest.raises(StorageException, match="Error reading f.txt") as excinfo,
     ):
-        storage.get("f.txt")
+        read(storage)
+    assert isinstance(excinfo.value.__cause__, OSError)
     assert storage.metrics.read_errors_total == 1
+
+
+def test_storage_fs_get_stream_seeks(storage: StorageFS) -> None:
+    """A caller can seek an `fs` body, as debkit's `.deb` reader does."""
+    storage.put("s.bin", b"0123456789")
+    with storage.get_stream("s.bin") as fp:
+        assert fp.seekable()
+        fp.seek(4)
+        assert fp.read(3) == b"456"
+        assert fp.tell() == 7
 
 
 @pytest.mark.parametrize(

@@ -21,6 +21,7 @@ from txstore import (
     StorageNull,
     StorageType,
 )
+from txstore.base import GuardedStream
 
 
 class _MemoryStorage(Storage):
@@ -195,3 +196,86 @@ def test_transfer_into_a_digest_sink_keeps_the_digests() -> None:
     digests = _MemoryStorage({"a.bin": b"hello"}).transfer("a.bin", StorageNull())
 
     assert digests["Size"] == "5"
+
+
+# --- GuardedStream → STORAGE.md#storage-abi ----------------------------------------------------
+
+
+class _Unreliable(io.BytesIO):
+    """A seekable body whose reads and seeks fail with `error` once `broken` is set."""
+
+    def __init__(self, data: bytes, error: Exception) -> None:
+        super().__init__(data)
+        self.error = error
+        self.broken = False
+        self.name = "body.bin"
+
+    def read(self, size: int | None = -1) -> bytes:
+        if self.broken:
+            raise self.error
+        return super().read(size)
+
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
+        if self.broken:
+            raise self.error
+        return super().seek(offset, whence)
+
+
+def _guard(inner: IO[bytes], storage: Storage | None = None) -> GuardedStream:
+    metrics = (storage or _MemoryStorage()).metrics
+    return GuardedStream(inner, errors=(OSError,), path="a.bin", metrics=metrics)
+
+
+@pytest.mark.parametrize("size", [-1, None], ids=["negative", "none"])
+def test_guarded_stream_reads_to_the_end(size: int | None) -> None:
+    stream = _guard(io.BytesIO(b"hello"))
+    assert stream.readable()
+    assert stream.read(size) == b"hello"
+
+
+def test_guarded_stream_reads_into_a_buffer() -> None:
+    stream = _guard(io.BytesIO(b"hello"))
+    buffer = bytearray(3)
+    assert stream.readinto(buffer) == 3
+    assert buffer == b"hel"
+
+
+@pytest.mark.parametrize("verb", ["read", "seek"])
+def test_guarded_stream_maps_a_listed_error(verb: str) -> None:
+    storage = _MemoryStorage()
+    inner = _Unreliable(b"hello", OSError("io"))
+    stream = _guard(inner, storage)
+    inner.broken = True
+    with pytest.raises(StorageException, match="Error reading a.bin: io") as excinfo:
+        getattr(stream, verb)(0)
+    assert excinfo.value.__cause__ is inner.error
+    assert storage.metrics.read_errors_total == 1
+
+
+def test_guarded_stream_lets_an_unlisted_error_through() -> None:
+    inner = _Unreliable(b"hello", ValueError("caller bug"))
+    stream = _guard(inner)
+    inner.broken = True
+    with pytest.raises(ValueError, match="caller bug"):
+        stream.read(1)
+
+
+def test_guarded_stream_seeks_a_seekable_body_and_keeps_its_name() -> None:
+    stream = _guard(_Unreliable(b"hello", OSError("io")))
+    assert stream.seek(2) == 2
+    assert stream.tell() == 2
+    assert stream.read() == b"llo"
+    assert stream.name == "body.bin"
+
+
+def test_guarded_stream_has_no_name_when_the_body_has_none() -> None:
+    assert not hasattr(_guard(io.BytesIO(b"")), "name")
+
+
+def test_guarded_stream_close_closes_the_body_once() -> None:
+    inner = io.BytesIO(b"hello")
+    with _guard(inner) as stream:
+        pass
+    assert inner.closed
+    assert stream.closed
+    stream.close()

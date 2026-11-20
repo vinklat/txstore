@@ -22,7 +22,9 @@ import requests
 
 from txstore._capabilities import ReadOnlyStorageMixin, TransactionNotSupportedMixin
 from txstore.base import (
+    CHUNK_SIZE,
     REQUEST_TIMEOUT,
+    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,
@@ -44,6 +46,35 @@ METADATA_HEADERS: tuple[str, ...] = (
     "ETag",
     "Cache-Control",
 )
+
+
+class _ContentReader:
+    """Readable view of a streamed response body, decoded by `iter_content`.
+
+    `iter_content` raises urllib3's read errors as `requests.RequestException`, so the body never
+    leaks a urllib3 class → [STORAGE.md](STORAGE.md#storage-abi).
+    """
+
+    def __init__(self, response: requests.Response) -> None:
+        self._response = response
+        self._chunks = response.iter_content(CHUNK_SIZE)
+        self._buffer = bytearray()
+
+    def read(self, size: int = -1) -> bytes:
+        """Read up to `size` decoded bytes, or to the end when `size` is negative."""
+        while size < 0 or len(self._buffer) < size:
+            chunk = next(self._chunks, None)
+            if chunk is None:
+                break
+            self._buffer += chunk
+        end = len(self._buffer) if size < 0 else size
+        data = bytes(self._buffer[:end])
+        del self._buffer[:end]
+        return data
+
+    def close(self) -> None:
+        """Release the connection."""
+        self._response.close()
 
 
 class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
@@ -239,13 +270,16 @@ class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
         Args:
             path: The path to stream the content from.
 
+        A content encoding such as gzip is decoded, and a read failure → `StorageException`
+        → [STORAGE.md](STORAGE.md#storage-abi).
+
         Raises:
             StorageNotFoundException: If the object is missing (HTTP 404).
             StorageException: If the request fails, is redirected, or answers
                 any other error status.
 
         Returns:
-            IO[bytes]: A readable stream of the content at *path*.
+            IO[bytes]: A readable stream of the content at *path*; it does not seek.
         """
         try:
             response = self._request("GET", path, stream=True)
@@ -255,5 +289,10 @@ class StorageHTTP(TransactionNotSupportedMixin, ReadOnlyStorageMixin, Storage):
             raise
 
         self.metrics.read_objects_inc()
-        response.raw.decode_content = True
-        return cast(IO[bytes], response.raw)
+        guarded = GuardedStream(
+            cast(IO[bytes], _ContentReader(response)),
+            errors=(requests.RequestException,),
+            path=redact_url(response.url),
+            metrics=self.metrics,
+        )
+        return cast(IO[bytes], guarded)

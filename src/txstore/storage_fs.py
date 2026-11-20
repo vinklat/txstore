@@ -37,7 +37,7 @@ import shutil
 import stat
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager, suppress
-from typing import IO, Any
+from typing import IO, Any, cast
 
 from txstore._fs_paths import (
     FILE_MODE_MASK,
@@ -57,6 +57,7 @@ from txstore._fs_paths import (
 from txstore._reserved import LOCK_FILENAME, check_reserved_path, is_reserved_path
 from txstore.base import (
     CHUNK_SIZE,
+    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,
@@ -365,11 +366,7 @@ class StorageFS(FootmarkMixin, Storage):
         """
         logger.debug("Reading file: %s", path)
         with self.get_stream(path) as f:
-            try:
-                data = f.read()
-            except OSError as exc:
-                self.metrics.read_errors_inc()
-                raise StorageException(f"Error reading {path}: {exc}") from exc
+            data = f.read()
         self.metrics.read_bytes_inc(len(data))
         return data
 
@@ -405,7 +402,8 @@ class StorageFS(FootmarkMixin, Storage):
     def get_stream(self, path: str) -> IO[bytes]:
         """Open `path` for streaming read.
 
-        The caller is responsible for closing the returned handle.
+        The caller is responsible for closing the returned handle; it seeks, and a read failure
+        → `StorageException` → [STORAGE.md](STORAGE.md#storage-abi).
 
         Raises:
             StorageNotFoundException: If the file does not exist.
@@ -429,7 +427,9 @@ class StorageFS(FootmarkMixin, Storage):
             self.metrics.read_errors_inc()
             raise StorageException(f"Error opening {path}: {exc}") from exc
         self.metrics.read_objects_inc()
-        return handle
+        return cast(
+            IO[bytes], GuardedStream(handle, errors=(OSError,), path=path, metrics=self.metrics)
+        )
 
     # =========================================================================
     # Object Operations - Write

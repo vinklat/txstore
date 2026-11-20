@@ -17,6 +17,8 @@ Every backend implements the abstract methods; `put` and `transfer` are shared.
 | `get_type()` | Backend `StorageType` (`fs`, `s3`, `http`, `null`). |
 | `list()` | Relative paths of regular objects; footmarks and hidden objects are excluded. |
 | `get(path)` / `get_stream(path)` | Object bytes / binary stream; missing object → `StorageNotFoundException`. |
+| `get_stream` body reads | A backend error raised while the body is read → `StorageException` chained from it, with one read error counted; on `http` the body is decoded per its `Content-Encoding`. |
+| `get_stream` seeking | Only an `fs` stream seeks and has `tell` and `fileno`; on the other backends those raise `io.UnsupportedOperation`, as an unseekable `io` stream does. |
 | `exists(path)` | Existence probe; backend errors other than "not found" → `StorageException`. |
 | `get_metadata(path)` | Backend metadata dict (FS xattrs, S3 user metadata; HTTP: `http_status_code` plus `Content-Type`, `Content-Length`, `Content-Encoding`, `Last-Modified`, `ETag`, `Cache-Control` when sent). |
 | `get_metadata` failures | Missing object → `StorageNotFoundException`. On `fs`, a filesystem without xattr support yields `{}`; any other xattr failure → `StorageException`. |

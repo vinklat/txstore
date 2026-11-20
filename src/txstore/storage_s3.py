@@ -37,6 +37,7 @@ from txstore._s3_errors import (
 from txstore._s3_lock import s3_lock
 from txstore.base import (
     CHUNK_SIZE,
+    GuardedStream,
     Storage,
     StorageException,
     StorageNotFoundException,
@@ -458,10 +459,7 @@ class StorageS3(FootmarkMixin, Storage):
     def get(self, path: str) -> bytes:
         """Retrieve the content of `path` from the bucket."""
         logger.debug("S3 GET %s...", path)
-        with (
-            self.get_stream(path) as stream,
-            s3_errors(f"Error reading S3 object {path}", on_error=self.metrics.read_errors_inc),
-        ):
+        with self.get_stream(path) as stream:
             data = stream.read()
         self.metrics.read_bytes_inc(len(data))
         return data
@@ -481,7 +479,10 @@ class StorageS3(FootmarkMixin, Storage):
         return self._overlay_exists(path)
 
     def get_stream(self, path: str) -> IO[bytes]:
-        """Open a streaming read of `path`."""
+        """Open a streaming read of `path`; a read failure → `StorageException`.
+
+        → [STORAGE.md](STORAGE.md#storage-abi).
+        """
         logger.debug("S3 GET (stream) %s...", path)
         full_key = self._read_target(path)
         with s3_errors(
@@ -491,7 +492,13 @@ class StorageS3(FootmarkMixin, Storage):
         ):
             stream = self._s3_client.object_get_stream(self.bucket, full_key)
         self.metrics.read_objects_inc()
-        return cast(IO[bytes], stream)
+        guarded = GuardedStream(
+            cast(IO[bytes], stream),
+            errors=S3_BACKEND_ERRORS,
+            path=f"S3 object {path}",
+            metrics=self.metrics,
+        )
+        return cast(IO[bytes], guarded)
 
     # =========================================================================
     # Object Operations - Write

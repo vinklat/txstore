@@ -365,14 +365,20 @@ class _EndlessStorage(_MemoryStorage):
         return cast(IO[bytes], self.body)
 
 
-@pytest.mark.parametrize(("body", "max_size"), [(b"", 0), (b"abc", 3), (b"abc", 4)])
+@pytest.mark.parametrize(
+    ("body", "max_size"),
+    [(b"", 0), (b"abc", 3), (b"abc", 4)],
+    ids=["empty-at-zero", "at-cap", "under-cap"],
+)
 def test_get_returns_an_object_within_the_cap(body: bytes, max_size: int) -> None:
     storage = _MemoryStorage({"a.bin": body})
     assert storage.get("a.bin", max_size=max_size) == body
     assert storage.metrics.dump()["read_bytes"] == len(body)
 
 
-@pytest.mark.parametrize(("body", "max_size"), [(b"a", 0), (b"abcd", 3)])
+@pytest.mark.parametrize(
+    ("body", "max_size"), [(b"a", 0), (b"abcd", 3)], ids=["one-over-zero", "one-over-three"]
+)
 def test_get_refuses_an_object_over_the_cap(body: bytes, max_size: int) -> None:
     storage = _MemoryStorage({"a.bin": body})
     with pytest.raises(StorageTooLargeException, match=f"a.bin is larger than {max_size} bytes"):
@@ -413,7 +419,7 @@ def test_transfer_over_the_cap_into_a_sink_raises_the_refusal_unchanged() -> Non
     assert sink.metrics.write_errors_total == 1
 
 
-def test_transfer_without_the_cap_lets_a_destination_failure_through() -> None:
+def test_transfer_under_the_cap_lets_a_destination_failure_through() -> None:
     class _Refusing(_MemoryStorage):
         def put_stream(
             self,
@@ -533,3 +539,28 @@ def test_capped_reads_never_ask_the_backend_for_the_cap_at_once(
     storage = _RecordingStorage(b"hello")
     read(storage)
     assert storage.sizes == expected
+
+
+_CROSS_CHUNK_READS = [
+    pytest.param(lambda s, m: s.get("a.bin", max_size=m), id="get"),
+    pytest.param(lambda s, m: s.get_digests("a.bin", max_size=m)["Size"], id="get_digests"),
+    pytest.param(
+        lambda s, m: s.transfer("a.bin", StorageNull(), max_size=m)["Size"], id="transfer"
+    ),
+]
+
+
+@pytest.mark.parametrize("read", _CROSS_CHUNK_READS)
+def test_capped_reads_count_the_size_across_chunks(
+    read: Callable[[Storage, int], object],
+) -> None:
+    """The running count spans `CHUNK_SIZE` reads: one byte over two chunks is refused."""
+    over = _MemoryStorage({"a.bin": b"x" * (2 * CHUNK_SIZE + 1)})
+    with pytest.raises(StorageTooLargeException):
+        read(over, 2 * CHUNK_SIZE)
+    assert over.metrics.read_errors_total == 1
+    assert over.metrics.dump()["read_bytes"] == 0
+
+    at = _MemoryStorage({"a.bin": b"x" * (2 * CHUNK_SIZE)})
+    assert read(at, 2 * CHUNK_SIZE) in (at.objects["a.bin"], str(2 * CHUNK_SIZE))
+    assert at.metrics.dump()["read_bytes"] == 2 * CHUNK_SIZE

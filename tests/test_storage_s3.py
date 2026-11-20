@@ -1008,3 +1008,12 @@ def test_storage_s3_get_digests_reads_the_object(storage: StorageS3) -> None:
     body = b"digest me"
     _put(storage, "d.bin", body)
     assert storage.get_digests("d.bin") == calc_digests(body)
+
+
+def test_storage_s3_get_caps_the_size(storage: StorageS3) -> None:
+    """→ STORAGE.md#storage-abi: at the cap the object is read, one byte over it is refused."""
+    _put(storage, "cap.bin", b"abcd")
+    assert storage.get("cap.bin", max_size=4) == b"abcd"
+    with pytest.raises(StorageTooLargeException, match="cap.bin is larger than 3 bytes"):
+        storage.get("cap.bin", max_size=3)
+    assert storage.metrics.read_errors_total == 1

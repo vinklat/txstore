@@ -310,8 +310,15 @@ class _DroppedConnection(io.RawIOBase):
         return n
 
 
+@pytest.mark.parametrize(
+    "read",
+    [lambda s: s.get("big"), lambda s: s.get_stream("big").read()],
+    ids=["get", "get_stream"],
+)
 @responses.activate
-def test_storage_http_get_stream_maps_a_body_read_failure(storage: StorageHTTP) -> None:
+def test_storage_http_maps_a_body_read_failure(
+    storage: StorageHTTP, read: Callable[[StorageHTTP], bytes]
+) -> None:
     """→ STORAGE.md#storage-abi: urllib3's read error reaches the caller as `StorageException`."""
     responses.add(
         responses.GET,
@@ -319,13 +326,27 @@ def test_storage_http_get_stream_maps_a_body_read_failure(storage: StorageHTTP) 
         body=io.BufferedReader(_DroppedConnection(b"head")),
         headers={"Content-Length": "100"},
     )
-    with (
-        storage.get_stream("big") as stream,
-        pytest.raises(StorageException, match="Error reading http://repo.example.com/big") as exc,
-    ):
-        stream.read()
+    with pytest.raises(StorageException, match="Error reading http://repo.example.com/big") as exc:
+        read(storage)
     assert isinstance(exc.value.__cause__, requests.RequestException)
     assert storage.metrics.read_errors_total == 1
+
+
+@responses.activate
+def test_storage_http_body_read_failure_never_names_url_credentials() -> None:
+    """→ CONFIG.md#secrets: userinfo stays out of the message and its chained cause."""
+    storage = StorageHTTP("https://reader:s3cr3t@repo.example.com/base")
+    responses.add(
+        responses.GET,
+        "https://repo.example.com/base/big",
+        body=io.BufferedReader(_DroppedConnection(b"head")),
+        headers={"Content-Length": "100"},
+    )
+    with pytest.raises(StorageException, match="Error reading") as exc:
+        storage.get("big")
+    for text in (str(exc.value), str(exc.value.__cause__)):
+        assert "s3cr3t" not in text
+        assert "reader" not in text
 
 
 @responses.activate

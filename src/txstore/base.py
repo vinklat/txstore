@@ -191,6 +191,23 @@ class GuardedStream(io.RawIOBase):
         except self._errors as exc:
             raise self._fail(exc) from exc
 
+    def readline(self, size: int | None = -1) -> bytes:
+        """Read one line, through the wrapped stream's own `readline` when it has one.
+
+        A buffered `fs` file then reads a line in one call; `io`'s default reads a byte at a time.
+
+        Raises:
+            StorageException: If the backend fails while the line is read.
+        """
+        readline = getattr(self._inner, "readline", None)
+        if readline is None:
+            return super().readline(size)
+        try:
+            line: bytes = readline(-1 if size is None else size)
+        except self._errors as exc:
+            raise self._fail(exc) from exc
+        return line
+
     def readinto(self, buffer: Any) -> int:
         """Read into a writable `buffer`, returning the byte count."""
         view = memoryview(buffer).cast("B")
@@ -222,10 +239,14 @@ class GuardedStream(io.RawIOBase):
 
         Raises:
             io.UnsupportedOperation: If the wrapped stream does not seek.
+            StorageException: If the backend fails the call.
         """
         if not self.seekable():
             raise io.UnsupportedOperation("tell")
-        return self._inner.tell()
+        try:
+            return self._inner.tell()
+        except self._errors as exc:
+            raise self._fail(exc) from exc
 
     def fileno(self) -> int:
         """Descriptor of the wrapped stream.

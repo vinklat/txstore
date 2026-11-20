@@ -445,7 +445,7 @@ def test_put_in_a_transaction_probes_the_staged_footmark(storage_public_verify: 
 @pytest.mark.parametrize(
     "error",
     [
-        # A dropped connection under an HTTP transfer: not a backend error.
+        # A dropped connection in a caller's own HTTP body: not a backend error.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
         StorageException("source read failed"),

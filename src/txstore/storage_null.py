@@ -59,7 +59,8 @@ class StorageNull(TransactionNotSupportedMixin, WriteOnlyStorageMixin, Storage):
         """Drain `stream` to its end, counting the bytes it held; bump metrics.
 
         Raises:
-            StorageException: If reading the stream fails.
+            StorageException: If reading the stream fails; one the stream raises propagates
+                unchanged → [STORAGE.md](STORAGE.md#storage-abi).
         """
         del acl
         logger.debug("(no effect) writing file (stream) %s", path)
@@ -69,8 +70,12 @@ class StorageNull(TransactionNotSupportedMixin, WriteOnlyStorageMixin, Storage):
             # Draining is what a digest-only transfer needs: the source hashes as it is read.
             while chunk := stream.read(CHUNK_SIZE):
                 nbytes += len(chunk)
+        except StorageException:
+            # A txstore source (a read failure or a size-cap refusal) propagates unchanged.
+            self.metrics.write_errors_inc()
+            raise
         except Exception as exc:
-            # Only the source stream raises, e.g. urllib3 under an HTTP transfer.
+            # Any other error is the stream's own, e.g. urllib3 from a caller's HTTP body.
             self.metrics.write_errors_inc()
             raise StorageException(
                 f"Error reading the stream for null object {path}: {exc}"

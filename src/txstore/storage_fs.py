@@ -493,7 +493,7 @@ class StorageFS(FootmarkMixin, Storage):
         except StorageException:
             raise
         except Exception as exc:
-            # Only the source stream raises past OSError, e.g. urllib3 under an HTTP transfer.
+            # Only the source stream raises past OSError, e.g. urllib3 from a caller's HTTP body.
             raise StorageException(f"Error reading the stream for {fpath}: {exc}") from exc
 
         if metadata:

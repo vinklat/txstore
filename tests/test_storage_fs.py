@@ -213,18 +213,21 @@ def test_storage_fs_get_stream_returns_a_blocking_handle(storage: StorageFS) -> 
     "error",
     [
         OSError("simulated mid-stream failure"),
-        # A dropped connection under an HTTP transfer: not an OSError.
+        # A dropped connection in a caller's own HTTP body: not an OSError.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
+        StorageException("source read failed"),
     ],
-    ids=["oserror", "urllib3", "other"],
+    ids=["oserror", "urllib3", "other", "storage"],
 )
 def test_storage_fs_put_stream_failure_leaves_no_partial_file(
     storage: StorageFS, error: Exception
 ) -> None:
     stream = FailingStream(error=error)
-    with pytest.raises(StorageException):
+    with pytest.raises(StorageException) as raised:
         storage.put_stream("out.bin", stream)  # type: ignore[arg-type]
+    if isinstance(error, StorageException):
+        assert raised.value is error
 
     assert not storage.exists("out.bin")
     assert storage.metrics.write_errors_total == 1

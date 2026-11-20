@@ -27,7 +27,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | Metadata keys on `fs` | Key `k` is the xattr `user.k`, on every OS; `get_metadata` returns only `user.` xattrs with the prefix dropped, and `delete_metadata` removes only those, so a key never reaches `security.`, `trusted.`, or `system.`. |
 | `put(path, data, metadata=None, acl=None)` / `put_stream(...)` | Write bytes / stream with optional metadata and a backend ACL (`fs` octal mode → [VALIDATION.md](VALIDATION.md#filename-safety), `s3` canned ACL → [S3 ACL rules](#s3-acl-rules)); `put` is a `put_stream` of the bytes. |
 | `put` metadata on `fs` | Best-effort: an xattr failure after the bytes are written is logged, not raised, and the object stays written. |
-| `put_stream` from a failing stream | → `StorageException` chained from the stream's error, one write error counted, and no object or temp file left; a `transfer` from `http` meets this when the connection drops. |
+| `put_stream` from a failing stream | → `StorageException` chained from the stream's error, one write error counted, and no object or temp file left; a `StorageException` the stream raises, as a `transfer` source does on a failed read or a size-cap refusal, propagates unchanged. |
 | `add_metadata(path, metadata, acl=None)` | Merge metadata onto an existing object. |
 | `add_metadata` failures | On a readable backend, a missing object or any backend failure → `StorageException`. On `fs`, a filesystem without xattr support skips the write with a warning. |
 | `delete(path)` / `delete_metadata(path)` / `delete_metadata_fields(path, keys)` | Remove the object / all metadata / named keys; on a readable backend, `delete` of a missing object → `StorageNotFoundException`. |
@@ -41,8 +41,8 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `format()` | Destructive reset of the whole storage root; see per-backend rows below. |
 | `transfer(path_src, storage_dst, path_dst=None, acl=None, *, max_size=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
 | Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
-| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read, never more, with one read error counted on the source. |
-| Over the size cap in `transfer` | The destination fails as from a failing stream, keeping no object, and `transfer` raises `StorageTooLargeException` chained from its error. |
+| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read, never more, with one read error counted on the source, as for any refusal made after the backend answered. |
+| Over the size cap in `transfer` | The destination fails as from a failing stream: it keeps no object, counts one write error, and the `StorageTooLargeException` propagates unchanged. |
 
 Streaming: `CHUNK_SIZE` is 1 MiB and HTTP requests use `REQUEST_TIMEOUT` of 30 s. `StorageMetrics`
 counts read/write/delete objects, bytes, and errors per instance; each backend counts its own

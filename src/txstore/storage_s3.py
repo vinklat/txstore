@@ -562,8 +562,8 @@ class StorageS3(FootmarkMixin, Storage):
         except StorageException:
             raise
         except Exception as exc:
-            # Only the source stream raises past the backend errors, e.g. urllib3 under an HTTP
-            # transfer.
+            # Only the source stream raises past the backend errors, e.g. urllib3 from a caller's
+            # HTTP body.
             raise StorageException(f"Error reading the stream for S3 object {path}: {exc}") from exc
         return counter.count if size is None else size
 

@@ -104,8 +104,8 @@ class _CappedReader:
         self._path = path
         self._metrics = metrics
         self._size = 0
-        # The refusal raised, kept so `transfer` can surface it past the destination's wrapper.
-        self.error: StorageTooLargeException | None = None
+        # The refusal, raised again to a destination that reads on after swallowing it.
+        self._error: StorageTooLargeException | None = None
 
     def read(self, size: int = -1) -> bytes:
         """Read up to `size` bytes, never past `max_size + 1` in total.
@@ -113,8 +113,8 @@ class _CappedReader:
         Raises:
             StorageTooLargeException: Once the body is found larger than `max_size`.
         """
-        if self.error is not None:
-            raise self.error
+        if self._error is not None:
+            raise self._error
         if self._max_size is None:
             return self._stream.read(size)
         remaining = self._max_size + 1 - self._size
@@ -122,10 +122,10 @@ class _CappedReader:
         self._size += len(data)
         if self._size > self._max_size:
             self._metrics.read_errors_inc()
-            self.error = StorageTooLargeException(
+            self._error = StorageTooLargeException(
                 f"{self._path} is larger than {self._max_size} bytes"
             )
-            raise self.error
+            raise self._error
         return data
 
 
@@ -450,15 +450,9 @@ class Storage(ABC):
         with self.get_stream(path_src) as fsrc:
             capped = _CappedReader(fsrc, max_size, path_src, self.metrics)
             fchecksums = ChecksumOpen(cast(IO[bytes], capped))
-            try:
-                # Every `put_stream` only calls `read`, which `ChecksumOpen` provides.
-                storage_dst.put_stream(path_dst, cast(IO[bytes], fchecksums), acl=acl)
-            except StorageException as exc:
-                # The destination wraps the refusal as its own write failure; the caller
-                # needs the size class back.
-                if capped.error is None or exc is capped.error:
-                    raise
-                raise StorageTooLargeException(str(capped.error)) from exc
+            # Every `put_stream` only calls `read`, which `ChecksumOpen` provides, and lets the
+            # refusal propagate unchanged → [STORAGE.md](STORAGE.md#storage-abi).
+            storage_dst.put_stream(path_dst, cast(IO[bytes], fchecksums), acl=acl)
 
         # The destination counts its own write in `put_stream`.
         self.metrics.read_bytes_inc(fchecksums.size)

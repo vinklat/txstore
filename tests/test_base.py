@@ -343,15 +343,13 @@ def test_transfer_within_the_cap_returns_the_digests() -> None:
     assert digests["Size"] == "3"
 
 
-def test_transfer_over_the_cap_raises_the_size_class_past_the_destination_wrapper() -> None:
-    """`StorageNull` wraps the refusal as a write failure; `transfer` restores the class."""
+def test_transfer_over_the_cap_into_a_sink_raises_the_refusal_unchanged() -> None:
+    """The destination counts its write error and lets the refusal through, unwrapped."""
     source = _MemoryStorage({"a.bin": b"abcd"})
     sink = StorageNull()
     with pytest.raises(StorageTooLargeException, match="a.bin is larger than 3 bytes") as excinfo:
         source.transfer("a.bin", sink, max_size=3)
-    wrapped = excinfo.value.__cause__
-    assert isinstance(wrapped, StorageException)
-    assert isinstance(wrapped.__cause__, StorageTooLargeException)
+    assert excinfo.value.__cause__ is None
     assert source.metrics.read_errors_total == 1
     assert sink.metrics.write_errors_total == 1
 

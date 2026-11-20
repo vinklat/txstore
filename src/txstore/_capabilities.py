@@ -77,10 +77,10 @@ class TransactionNotSupportedMixin:
 class ReadOnlyStorageMixin:
     """Default `StorageNotSupportedException` stubs for write/delete/metadata/copy/move.
 
-    Backends inheriting this mixin (e.g. `StorageHTTP`) still define the
-    read-side methods (`list`, `get`, `get_stream`, `get_metadata`,
-    `exists`); a backend without a listing API makes `list` raise
-    `NotImplementedError` → [STORAGE.md](STORAGE.md#backends).
+    Backends inheriting this mixin (e.g. `StorageHTTP`) still define `get_stream`,
+    `get_metadata`, `exists`, and `list`; `get` is shared on `Storage`. A backend without a
+    listing API makes `list` raise `StorageNotSupportedException`
+    → [STORAGE.md](STORAGE.md#backends).
     """
 
     def put(

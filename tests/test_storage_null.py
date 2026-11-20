@@ -115,7 +115,7 @@ class _BrokenStream(io.BytesIO):
     "error",
     [
         OSError("read failed"),
-        # A dropped connection under an HTTP transfer: not an OSError.
+        # A dropped connection in a caller's own HTTP body: not an OSError.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
     ],
@@ -129,6 +129,15 @@ def test_storage_null_put_stream_wraps_any_stream_failure(
     assert info.value.__cause__ is error
     assert storage.metrics.dump()["write_errors_total"] == 1
     assert storage.metrics.dump()["write_objects_total"] == 0
+
+
+def test_storage_null_put_stream_lets_a_storage_exception_through(storage: StorageNull) -> None:
+    """→ STORAGE.md#storage-abi: a txstore source's error is not wrapped twice."""
+    error = StorageException("source read failed")
+    with pytest.raises(StorageException) as info:
+        storage.put_stream("p", _BrokenStream(error))
+    assert info.value is error
+    assert storage.metrics.dump()["write_errors_total"] == 1
 
 
 def test_storage_null_put_stream_accepts_metadata(storage: StorageNull) -> None:

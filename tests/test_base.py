@@ -496,3 +496,40 @@ def test_get_digests_refuses_an_invalid_max_size() -> None:
 def test_get_digests_of_a_missing_object_raises_not_found() -> None:
     with pytest.raises(StorageNotFoundException):
         _MemoryStorage().get_digests("gone")
+
+
+class _RecordingStorage(_MemoryStorage):
+    """Serves one body and records every read size `get` asks its stream for."""
+
+    def __init__(self, body: bytes) -> None:
+        super().__init__({"a.bin": body})
+        self.sizes: list[int | None] = []
+
+    def get_stream(self, path: str) -> IO[bytes]:
+        sizes = self.sizes
+
+        class _Body(io.BytesIO):
+            def read(self, size: int | None = -1) -> bytes:
+                sizes.append(size)
+                return super().read(size)
+
+        return _Body(self.objects[path])
+
+
+@pytest.mark.parametrize(
+    ("read", "expected"),
+    [
+        (lambda s: s.get("a.bin"), [-1]),
+        (lambda s: s.get("a.bin", max_size=2**40), [CHUNK_SIZE, CHUNK_SIZE]),
+        (lambda s: s.transfer("a.bin", _MemoryStorage(), max_size=2**40), [CHUNK_SIZE] * 2),
+    ],
+    ids=["get-uncapped-one-read", "get-capped-in-chunks", "transfer-capped-in-chunks"],
+)
+def test_capped_reads_never_ask_the_backend_for_the_cap_at_once(
+    read: Callable[[Storage], object], expected: list[int]
+) -> None:
+    """A cap of 1 TiB must not ask the backend for 1 TiB in one read, even when the
+    destination reads to the end, as `_MemoryStorage.put_stream` does."""
+    storage = _RecordingStorage(b"hello")
+    read(storage)
+    assert storage.sizes == expected

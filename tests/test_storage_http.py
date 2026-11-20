@@ -370,6 +370,20 @@ def test_storage_http_get_caps_the_decoded_size(storage: StorageHTTP) -> None:
         storage.get("gz", max_size=4999)
 
 
+@responses.activate
+def test_storage_http_get_holds_about_two_copies_of_the_body(storage: StorageHTTP) -> None:
+    """An uncapped read to the end copies the decoded body once more, not twice."""
+    body = b"x" * (8 * 1024 * 1024)
+    responses.add(responses.GET, "http://repo.example.com/big", body=body)
+    tracemalloc.start()
+    try:
+        assert storage.get("big") == body
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 2.5 * len(body)
+
+
 @pytest.mark.parametrize("layers", [1, 2], ids=["gzip", "gzip-gzip"])
 @responses.activate
 def test_storage_http_get_refuses_a_gzip_bomb_without_decoding_it(

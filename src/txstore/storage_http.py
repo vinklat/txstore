@@ -62,14 +62,20 @@ class _ContentReader:
 
     def read(self, size: int = -1) -> bytes:
         """Read up to `size` decoded bytes, or to the end when `size` is negative."""
-        while size < 0 or len(self._buffer) < size:
+        if size < 0:
+            # One copy of the whole body, not a slice and then its copy.
+            for chunk in self._chunks:
+                self._buffer += chunk
+            data = bytes(self._buffer)
+            self._buffer.clear()
+            return data
+        while len(self._buffer) < size:
             chunk = next(self._chunks, None)
             if chunk is None:
                 break
             self._buffer += chunk
-        end = len(self._buffer) if size < 0 else size
-        data = bytes(self._buffer[:end])
-        del self._buffer[:end]
+        data = bytes(self._buffer[:size])
+        del self._buffer[:size]
         return data
 
     def close(self) -> None:

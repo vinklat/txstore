@@ -108,7 +108,11 @@ class _CappedReader:
         self._error: StorageTooLargeException | None = None
 
     def read(self, size: int = -1) -> bytes:
-        """Read up to `size` bytes, never past `max_size + 1` in total.
+        """Read up to `size` bytes, or to the end when `size` is negative, never past the cap.
+
+        Without a cap the read passes straight through, so `fs` sizes one read by the file. With
+        one, a read to the end goes in `CHUNK_SIZE` pieces: a single read of `max_size + 1` bytes
+        would allocate them up front however small the body is.
 
         Raises:
             StorageTooLargeException: Once the body is found larger than `max_size`.
@@ -117,6 +121,11 @@ class _CappedReader:
             raise self._error
         if self._max_size is None:
             return self._stream.read(size)
+        if size < 0:
+            buffer = io.BytesIO()
+            while chunk := self.read(CHUNK_SIZE):
+                buffer.write(chunk)
+            return buffer.getvalue()
         remaining = self._max_size + 1 - self._size
         data = self._stream.read(remaining if size < 0 else min(size, remaining))
         self._size += len(data)
@@ -308,14 +317,7 @@ class Storage(ABC):
         """
         _check_max_size(max_size)
         with self.get_stream(path) as stream:
-            if max_size is None:
-                data = stream.read()
-            else:
-                reader = _CappedReader(stream, max_size, path, self.metrics)
-                buffer = bytearray()
-                while chunk := reader.read(CHUNK_SIZE):
-                    buffer += chunk
-                data = bytes(buffer)
+            data = _CappedReader(stream, max_size, path, self.metrics).read()
         self.metrics.read_bytes_inc(len(data))
         return data
 

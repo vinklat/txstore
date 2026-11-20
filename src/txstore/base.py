@@ -298,6 +298,32 @@ class Storage(ABC):
         self.metrics.read_bytes_inc(len(data))
         return data
 
+    def get_digests(self, path: str, *, max_size: int | None = None) -> dict[str, str]:
+        """Read the object at `path` only to digest it; no sink storage is needed.
+
+        Args:
+            path: Object path.
+            max_size: Largest size accepted, in bytes; None reads any size
+                → [STORAGE.md](STORAGE.md#digests).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageNotFoundException: If the object is missing.
+            StorageTooLargeException: If the object is larger than `max_size`.
+            StorageException: If the object cannot be opened or read.
+
+        Returns:
+            Digests of the object, as `transfer` returns them.
+        """
+        _check_max_size(max_size)
+        with self.get_stream(path) as stream:
+            capped = _CappedReader(stream, max_size, path, self.metrics)
+            fchecksums = ChecksumOpen(cast(IO[bytes], capped))
+            while fchecksums.read(CHUNK_SIZE):
+                pass
+        self.metrics.read_bytes_inc(fchecksums.size)
+        return fchecksums.get_digests()
+
     @abstractmethod
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Return the metadata of the object at `path`."""

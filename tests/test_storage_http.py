@@ -28,6 +28,7 @@ from txstore import (
     StorageNotSupportedException,
     StorageTooLargeException,
     StorageType,
+    calc_digests,
     make_storage,
 )
 
@@ -336,6 +337,19 @@ def test_storage_http_get_stream_reads_in_pieces_and_does_not_seek(storage: Stor
         assert not stream.seekable()
         with pytest.raises(io.UnsupportedOperation):
             stream.seek(0)
+
+
+@responses.activate
+def test_storage_http_get_digests_reads_the_decoded_object(storage: StorageHTTP) -> None:
+    """→ STORAGE.md#digests: digests of the object, not of its gzip transport."""
+    body = b"x" * 5000
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/gz",
+        body=gzip.compress(body),
+        headers={"Content-Encoding": "gzip"},
+    )
+    assert storage.get_digests("gz") == calc_digests(body)
 
 
 @responses.activate

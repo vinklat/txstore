@@ -10,8 +10,8 @@ Callers import from the `txstore` façade, never from a submodule →
 
 ## Storage ABI
 
-Every backend implements the abstract methods; `put` is shared over `put_stream`, and `get` and
-`transfer` over `get_stream`.
+Every backend implements the abstract methods; `put` is shared over `put_stream`, and `get`,
+`transfer`, and `get_digests` over `get_stream`.
 
 | Method | Contract |
 | -- | -- |
@@ -40,7 +40,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `mkdir(path)` / `rmdir(path)` | Directory lifecycle; no-ops where the backend has no directories. A file at the `mkdir` path → `StorageException`. |
 | `format()` | Destructive reset of the whole storage root; see per-backend rows below. |
 | `transfer(path_src, storage_dst, path_dst=None, acl=None, *, max_size=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
-| Size cap | `max_size` caps `get` and `transfer` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
+| Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 | Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read, never more, with one read error counted on the source. |
 | Over the size cap in `transfer` | The destination fails as from a failing stream, keeping no object, and `transfer` raises `StorageTooLargeException` chained from its error. |
 
@@ -419,11 +419,12 @@ the object onto itself with `MetadataDirective="REPLACE"` in `txstore/_s3_client
 
 | Item | Rule |
 | -- | -- |
-| Digest dict | Keys `MD5Sum`, `SHA1`, `SHA256`, `SHA512` (hex strings) and `Size` (decimal string), as `ChecksumOpen.get_digests`, `calc_digests`, and `transfer` return them. |
+| Digest dict | Keys `MD5Sum`, `SHA1`, `SHA256`, `SHA512` (hex strings) and `Size` (decimal string), as `ChecksumOpen.get_digests`, `calc_digests`, `transfer`, and `get_digests` return them. |
 | Key spellings | Debian `Release` field names, so digest dicts interoperate with apt index tooling; `Size` is a decimal string for the same reason. Renaming is an API break. |
 | `MD5Sum` | Kept because Debian indices still carry it; never decides a match on its own. |
 | `SUPPORT_HASH_LIST`, `COMPARE_HASH_LIST` | The algorithm keys in order, and the same list without `MD5Sum`; `compare_digests` iterates the first and counts a match only on the second, `normalize_digests` keeps only the second. |
-| `ChecksumOpen` | Wraps a stream and computes every digest and the size while it is read; reused by `transfer`. |
+| `ChecksumOpen` | Wraps a stream and computes every digest and the size while it is read; reused by `transfer` and `get_digests`. |
+| `get_digests(path, *, max_size=None)` | Reads one object through `get_stream` only to digest it, counting the read bytes; no sink storage is needed. Size cap → [Storage ABI](#storage-abi). |
 | `compare_digests(expected, incoming)` | `True` only when at least one algorithm other than `MD5Sum` is shared and every shared value, `MD5Sum` included, matches: MD5 can refuse a match but never make one. |
 | Non-overlapping, unknown, or mismatched digests | `compare_digests` returns `False`. |
 | `normalize_digests` | Canonicalizes algorithm names before comparison and drops unsupported ones and `MD5Sum`. |

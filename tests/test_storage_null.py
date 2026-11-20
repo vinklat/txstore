@@ -66,6 +66,7 @@ def test_storage_null_format_and_rmdir_are_noops(storage: StorageNull) -> None:
     [
         ("list", ()),
         ("get", ("p",)),
+        ("get_digests", ("p",)),
         ("get_metadata", ("p",)),
         ("exists", ("p",)),
         ("get_stream", ("p",)),

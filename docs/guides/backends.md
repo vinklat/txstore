@@ -12,8 +12,8 @@ The four storage backends, how a URL picks one, and how to configure them with a
 | `http://...`, `https://...` | `StorageHTTP` | yes | no | no |
 | none | `StorageNull` | no | yes (discarded) | no |
 
-`StorageNull` swallows writes; pair it with `transfer` to compute digests without keeping a copy.
-Construct it directly: `StorageNull()`.
+`StorageNull` swallows writes. Construct it directly: `StorageNull()`. To digest an object without
+keeping a copy, call `get_digests` on its storage; no sink is needed.
 
 ## Building a storage
 

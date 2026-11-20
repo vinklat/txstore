@@ -60,6 +60,7 @@ def test_read_only_rejects_writes(method: str, args: tuple[object, ...]) -> None
     [
         ("list", ()),
         ("get", ("p",)),
+        ("get_digests", ("p",)),
         ("get_metadata", ("p",)),
         ("exists", ("p",)),
         ("get_stream", ("p",)),

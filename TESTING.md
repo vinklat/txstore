@@ -55,7 +55,7 @@ not copied here.
 | Timestamps | Golden text forms for every fraction width and range edge; accepted and rejected parse inputs; range refusal; datetime round trip → [STORAGE.md](STORAGE.md#timestamps). |
 | S3 client | Bucket and object operations against moto; group-ACL carry-over on copy; metadata merge, removal, header and ACL preservation; the multipart rewrite and its abort → [STORAGE.md](STORAGE.md#s3-metadata-rewrites). |
 | Environment | Variable grammar, refusal messages naming the variable, unprefixed names ignored, secrets absent from logs. |
-| Digests | Streamed and in-memory digests, normalization, and the comparison rules → [STORAGE.md](STORAGE.md#digests). |
+| Digests | Streamed and in-memory digests, `get_digests` on every backend and in a transaction, normalization, and the comparison rules → [STORAGE.md](STORAGE.md#digests). |
 
 ## Package contracts
 

@@ -5,7 +5,7 @@
 | Phase | Status | Feature | Notes |
 | -- | -- | -- | -- |
 | 0.1.0 | ✅ | Initial public release | fs, S3, HTTP, and null backends; transactions, history, and retention; protobuf-free footmark codec; configuration by arguments or `TX_STORE_*` variables; Debian testing floors |
-| 0.1.3 | ⏳ | Bounded reads for untrusted sources | A size cap on `get` and `transfer` that stops at the limit instead of reading on; backend errors raised while a `get_stream` body is read mapped to `StorageException` → [STORAGE.md](STORAGE.md#storage-abi); a digest read with no sink storage → [STORAGE.md](STORAGE.md#digests); capability stubs raise a `StorageException` that is also a `NotImplementedError` → [EXCEPTIONS.md](EXCEPTIONS.md#rules); needed by debkit 0.1.1 |
+| 0.1.3 | ✅ | Bounded reads for untrusted sources | A size cap on `get` and `transfer` that stops at the limit instead of reading on; backend errors raised while a `get_stream` body is read mapped to `StorageException` → [STORAGE.md](STORAGE.md#storage-abi); a digest read with no sink storage → [STORAGE.md](STORAGE.md#digests); capability stubs raise a `StorageException` that is also a `NotImplementedError` → [EXCEPTIONS.md](EXCEPTIONS.md#rules); needed by debkit 0.1.1 |
 | 0.2.0 | ⏳ | Debian package for forky | `python3-txstore`, maintained by the Debian Python Team → [SETUP.md](SETUP.md#debian-package); open: join the team, ITP, team repository on salsa, team sponsor, upload to unstable, migration to testing before the forky soft freeze |
 | 1.0.0 | ⏳ | Stable API | Freeze the façade before the forky freeze so forky ships an API maintained for the whole release |
 

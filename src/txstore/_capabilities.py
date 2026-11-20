@@ -162,6 +162,10 @@ class WriteOnlyStorageMixin:
         """Not supported (write-only storage)."""
         raise StorageNotSupportedException(WRITE_ONLY_MSG)
 
+    def get_digests(self, path: str, *, max_size: int | None = None) -> dict[str, str]:
+        """Not supported (write-only storage)."""
+        raise StorageNotSupportedException(WRITE_ONLY_MSG)
+
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Not supported (write-only storage)."""
         raise StorageNotSupportedException(WRITE_ONLY_MSG)

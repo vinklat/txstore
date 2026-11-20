@@ -35,6 +35,7 @@ from txstore import (
     StorageTooLargeException,
     StorageType,
     TransactionHistory,
+    calc_digests,
 )
 
 
@@ -950,3 +951,10 @@ def test_storage_fs_capped_transfer_leaves_no_object_or_temp_file(storage: Stora
         storage.transfer("big.bin", storage, "copy.bin", max_size=10)
     assert os.listdir(storage.base_dir) == ["big.bin"]
     assert storage.metrics.write_errors_total == 1
+
+
+def test_storage_fs_get_digests_reads_the_object(storage: StorageFS) -> None:
+    """→ STORAGE.md#digests: digests without a sink storage."""
+    body = b"digest me"
+    storage.put("d.bin", body)
+    assert storage.get_digests("d.bin") == calc_digests(body)

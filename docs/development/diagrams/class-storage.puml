@@ -2,9 +2,10 @@
 abstract class Storage {
   metrics: StorageMetrics
   + put(path, data, [metadata], [acl])
-  + transfer(path_src, storage_dst, [path_dst], [acl])
+  + get(path, [max_size]) / get_digests(path, [max_size])
+  + transfer(path_src, storage_dst, [path_dst], [acl], [max_size])
   -- abstract --
-  + list() / get(path) / get_stream(path) / exists(path)
+  + list() / get_stream(path) / exists(path)
   + put_stream(path, stream, [metadata], [acl])
   + get_metadata(path) / add_metadata(path, metadata, [acl])
   + delete(path) / delete_metadata(path) / delete_metadata_fields(path, keys)

@@ -30,6 +30,7 @@ from txstore import (
     Timestamp,
     TransactionHistory,
     TransactionModel,
+    calc_digests,
     maybe_transaction,
     parse_bucket_acl,
     parse_object_acl,
@@ -1000,3 +1001,10 @@ def test_storage_s3_capped_transfer_leaves_no_object(storage: StorageS3) -> None
         storage.transfer("big.bin", storage, "copy.bin", max_size=10)
     assert not storage.exists("copy.bin")
     assert storage.metrics.write_errors_total == 1
+
+
+def test_storage_s3_get_digests_reads_the_object(storage: StorageS3) -> None:
+    """→ STORAGE.md#digests: digests without a sink storage."""
+    body = b"digest me"
+    _put(storage, "d.bin", body)
+    assert storage.get_digests("d.bin") == calc_digests(body)

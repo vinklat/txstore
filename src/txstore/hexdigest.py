@@ -1,8 +1,8 @@
 """Streamed and in-memory digest helpers.
 
-Digest dicts from `ChecksumOpen.get_digests`, `calc_digests`, and `Storage.transfer` share the
-key spellings owned by [STORAGE.md](STORAGE.md#digests); `compare_digests` never lets `MD5Sum`
-decide a match on its own.
+Digest dicts from `ChecksumOpen.get_digests`, `calc_digests`, `Storage.transfer`, and
+`Storage.get_digests` share the key spellings owned by [STORAGE.md](STORAGE.md#digests);
+`compare_digests` never lets `MD5Sum` decide a match on its own.
 """
 
 import logging

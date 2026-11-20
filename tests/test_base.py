@@ -21,6 +21,7 @@ from txstore import (
     StorageNull,
     StorageTooLargeException,
     StorageType,
+    calc_digests,
 )
 from txstore.base import GuardedStream
 
@@ -407,3 +408,34 @@ def test_transfer_keeps_refusing_a_destination_that_reads_again() -> None:
         source.transfer("a.bin", _Retrying(), max_size=10)
     assert source.body.pulled == 11
     assert source.metrics.read_errors_total == 1
+
+
+# --- get_digests → STORAGE.md#digests ----------------------------------------------------------
+
+
+def test_get_digests_matches_calc_digests_and_counts_the_read() -> None:
+    body = b"x" * (CHUNK_SIZE + 5)
+    storage = _MemoryStorage({"a.bin": body})
+    assert storage.get_digests("a.bin") == calc_digests(body)
+    assert storage.metrics.dump()["read_bytes"] == len(body)
+
+
+def test_get_digests_within_the_cap() -> None:
+    assert _MemoryStorage({"a.bin": b"abc"}).get_digests("a.bin", max_size=3)["Size"] == "3"
+
+
+def test_get_digests_stops_reading_an_endless_body_at_the_cap() -> None:
+    storage = _EndlessStorage()
+    with pytest.raises(StorageTooLargeException):
+        storage.get_digests("a.bin", max_size=10)
+    assert storage.body.pulled == 11
+
+
+def test_get_digests_refuses_an_invalid_max_size() -> None:
+    with pytest.raises(ValueError, match="max_size"):
+        _MemoryStorage().get_digests("gone", max_size=-1)
+
+
+def test_get_digests_of_a_missing_object_raises_not_found() -> None:
+    with pytest.raises(StorageNotFoundException):
+        _MemoryStorage().get_digests("gone")

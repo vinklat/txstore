@@ -41,14 +41,16 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `format()` | Destructive reset of the whole storage root; see per-backend rows below. |
 | `transfer(path_src, storage_dst, path_dst=None, acl=None, *, max_size=None)` | Streams one object into another storage in a single pass and returns its digests → [Digests](#digests). |
 | Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
-| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read, never more, with one read error counted on the source, as for any refusal made after the backend answered. |
+| Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read from the backend stream, never more, with one read error counted on the source, as for any refusal made after the backend answered. |
+| Size cap below the stream | The cap counts the bytes the backend stream returns: buffering below it can pull up to `CHUNK_SIZE` more from the source, and a compressed `http` body is bounded only as [ROADMAP.md](ROADMAP.md#known-deviations) records. |
 | Over the size cap in `transfer` | The destination fails as from a failing stream: it keeps no object, counts one write error, and the `StorageTooLargeException` propagates unchanged. |
 
-Streaming: `CHUNK_SIZE` is 1 MiB and HTTP requests use `REQUEST_TIMEOUT` of 30 s. `StorageMetrics`
-counts read/write/delete objects, bytes, and errors per instance; each backend counts its own
-written bytes in `put_stream`, so a `transfer` counts the source's read and the destination's write
-once each. Only the public verbs count: history and lock I/O and the commit, discard, and revert
-primitives do not.
+Streaming: `CHUNK_SIZE` is 1 MiB. HTTP requests use `REQUEST_TIMEOUT` of 30 s per connect and per
+socket read, with no total deadline → [ROADMAP.md](ROADMAP.md#ideas). `StorageMetrics` counts
+read/write/delete objects, bytes, and errors per instance; each backend counts its own written bytes
+in `put_stream`, so a `transfer` counts the source's read and the destination's write once each.
+Only the public verbs count: history and lock I/O and the commit, discard, and revert primitives do
+not.
 
 ## Backends
 

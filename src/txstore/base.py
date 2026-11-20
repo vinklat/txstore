@@ -312,7 +312,7 @@ class Storage(ABC):
             ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
             StorageNotFoundException: If the object is missing.
             StorageTooLargeException: If the object is larger than `max_size`; at most
-                `max_size + 1` bytes are read.
+                `max_size + 1` bytes are read from `get_stream`.
             StorageException: If the object cannot be opened or read.
         """
         _check_max_size(max_size)

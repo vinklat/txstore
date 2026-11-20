@@ -40,7 +40,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 ## Testing notes
 
-`tests/test_capabilities.py` proves the stubs; `tests/test_base.py` the shared `put` and `transfer`;
+`tests/test_capabilities.py` proves the stubs; `tests/test_base.py` the shared `put`, `get`,
+`get_digests`, and `transfer`, size cap included; `tests/test_streams.py` `GuardedStream`;
 `tests/test_storage_*.py` each backend; `tests/test_transactions.py` the mixin on the in-memory
 `MemoryTxnStorage` from `tests/helpers/storage.py` as well as on FS and S3;
 `tests/test_transaction.py` `maybe_transaction` with stubs.

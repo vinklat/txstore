@@ -45,7 +45,7 @@ propagates.
 | -- | -- |
 | `StorageException` | A backend operation, transaction, history, or lock step failed. |
 | `StorageNotFoundException` | A missing object → [STORAGE.md](../../STORAGE.md#storage-abi); a `StorageException`. In a transaction → [STORAGE.md](../../STORAGE.md#footmarks). |
-| `ValueError` | A bad URL scheme, ACL name, environment value, retention value, or `max_size` → [VALIDATION.md](../../VALIDATION.md#read-size-cap). |
+| `ValueError` | A bad URL scheme, ACL name, environment value, retention value, or `max_size` → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
 | `StorageTooLargeException` | An object read with `max_size` is larger than the cap → [STORAGE.md](../../STORAGE.md#storage-abi); a `StorageException`. |
 | `StorageNotSupportedException` | The backend lacks the operation (writes on HTTP, reads on the null sink); both a `StorageException` and a `NotImplementedError`. |
 

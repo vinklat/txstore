@@ -160,8 +160,10 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
   `get`, `transfer`, and the new `get_digests` take `max_size` →
   [STORAGE.md](STORAGE.md#storage-abi). Breaking: an unsupported operation raises
   `StorageNotSupportedException` → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions);
-  `get_stream` returns a wrapper without backend attributes such as `iter_chunks` or `raw`, and
-  its body read failures and HTTP `get` streaming change → [STORAGE.md](STORAGE.md#storage-abi).
+  `get_stream` returns a wrapper without backend attributes such as `iter_chunks` or `raw`;
+  iterating it yields lines, not S3's 1 KiB chunks; on `s3` and `http`, `tell` raises
+  `io.UnsupportedOperation`; its body read failures and HTTP `get` streaming change →
+  [STORAGE.md](STORAGE.md#storage-abi).
   urllib3 2.6 or later is required.
 - 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
   `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).

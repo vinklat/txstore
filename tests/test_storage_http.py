@@ -480,6 +480,7 @@ _READ_METHODS = pytest.mark.parametrize(
     [
         ("get", responses.GET),
         ("get_stream", responses.GET),
+        ("get_digests", responses.GET),
         ("get_metadata", responses.HEAD),
         ("exists", responses.HEAD),
     ],

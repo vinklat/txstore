@@ -22,6 +22,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | `get_stream` body encoding | On `http`, the body is decoded per its `Content-Encoding`. |
 | `get_stream` seeking | Only an `fs` stream seeks and has `tell` and `fileno`. |
 | `seek`, `tell`, or `fileno` on a non-`fs` stream | → `io.UnsupportedOperation`, as on an unseekable `io` stream. |
+| `get_stream` iteration | Yields lines, as any binary `io` stream does; read a binary body in chunks with `read(n)`. |
 | `exists(path)` | Existence probe; backend errors other than "not found" → `StorageException`. |
 | `get_metadata(path)` | Backend metadata dict (FS xattrs, S3 user metadata; HTTP: `http_status_code` plus `Content-Type`, `Content-Length`, `Content-Encoding`, `Last-Modified`, `ETag`, `Cache-Control` when sent). |
 | `get_metadata` failures | Missing object → `StorageNotFoundException`. On `fs`, a filesystem without xattr support yields `{}`; any other xattr failure → `StorageException`. |
@@ -64,7 +65,7 @@ commit, discard, and revert primitives do not.
 | -- | -- | -- | -- | -- | -- | -- |
 | `fs` | `StorageFS` | yes | yes | yes | xattr | Root is the URL path, `fs:///<absolute path>`; authority and relative path → [VALIDATION.md](VALIDATION.md#storage-urls). Key layout and `format()` → [Backend specifics](#backend-specifics). |
 | `s3` | `StorageS3` | yes | yes | yes | user metadata + canned ACL | URL `s3://<endpoint>/<bucket>[/<prefix>]` → [VALIDATION.md](VALIDATION.md#s3-url-path-split). Listings, directories, and `format()` → [Backend specifics](#backend-specifics). |
-| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; `list`, `format()`, and every write, metadata-changing, copy, move, directory, and transaction method → `StorageNotSupportedException`, except `in_transaction()`, which returns `False`. Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
+| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; operations, redirects, and URL redaction → [Backend specifics](#backend-specifics). |
 | `null` | `StorageNull` | no | yes | no | none | `WriteOnlyStorageMixin` + `TransactionNotSupportedMixin`; write-only sink for digest-only transfers; operations → [StorageNull operations](#storagenull-operations). Not URL-routable → [VALIDATION.md](VALIDATION.md#storage-urls). |
 
 An unsupported operation → `StorageNotSupportedException`, never `AttributeError`; the capability
@@ -79,6 +80,10 @@ mixins in `txstore/_capabilities.py` provide the stubs.
 | `s3` listings | Listings, and so `list` and reclamation, see only keys under `<prefix>/`. |
 | `s3` directories | `mkdir` and `rmdir` are no-ops. |
 | `s3` `format()` | Deletes and recreates the bucket; with a prefix → `StorageException`, since the bucket holds keys outside the root. |
+| `http` unsupported operations | `list`, `format()`, and every write, metadata-changing, copy, move, directory, and transaction method → `StorageNotSupportedException`. |
+| `http` `in_transaction()` | Returns `False`. |
+| `http` redirects | → [VALIDATION.md](VALIDATION.md#http-url-join-safety) |
+| `http` URL redaction | → [CONFIG.md](CONFIG.md#secrets) |
 
 ### StorageNull operations
 

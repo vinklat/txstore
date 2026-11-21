@@ -59,5 +59,7 @@ Raw calls leave no history record, so `TransactionHistory.revert_last` cannot se
 
 ## Further reading
 
-- [STORAGE.md](../../STORAGE.md#transactions), including the failure semantics.
+- [STORAGE.md](../../STORAGE.md#transactions), including the failure semantics, and
+  [STORAGE.md](../../STORAGE.md#backends) for backends without transactions.
+- [EXCEPTIONS.md](../../EXCEPTIONS.md#storage-exceptions) for the error classes.
 - [ROADMAP.md](../../ROADMAP.md#known-deviations) for the atomicity limits.

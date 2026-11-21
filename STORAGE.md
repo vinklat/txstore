@@ -66,7 +66,7 @@ commit, discard, and revert primitives do not.
 | -- | -- | -- | -- | -- | -- | -- |
 | `fs` | `StorageFS` | yes | yes | yes | xattr | Root is the URL path, `fs:///<absolute path>`; authority and relative path → [VALIDATION.md](VALIDATION.md#storage-urls). Key layout and `format()` → [Backend specifics](#backend-specifics). |
 | `s3` | `StorageS3` | yes | yes | yes | user metadata + canned ACL | URL `s3://<endpoint>/<bucket>[/<prefix>]` → [VALIDATION.md](VALIDATION.md#s3-url-path-split). Listings, directories, and `format()` → [Backend specifics](#backend-specifics). |
-| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; operations, redirects, and URL redaction → [Backend specifics](#backend-specifics). |
+| `http`, `https` | `StorageHTTP` | yes | no | no | none | `ReadOnlyStorageMixin` + `TransactionNotSupportedMixin`; operations → [Backend specifics](#backend-specifics). Redirects → [VALIDATION.md](VALIDATION.md#http-url-join-safety); URL redaction → [CONFIG.md](CONFIG.md#secrets). |
 | `null` | `StorageNull` | no | yes | no | none | `WriteOnlyStorageMixin` + `TransactionNotSupportedMixin`; write-only sink for digest-only transfers; operations → [StorageNull operations](#storagenull-operations). Not URL-routable → [VALIDATION.md](VALIDATION.md#storage-urls). |
 
 An unsupported operation → `StorageNotSupportedException`, never `AttributeError`; the capability
@@ -83,8 +83,6 @@ mixins in `txstore/_capabilities.py` provide the stubs.
 | `s3` `format()` | Deletes and recreates the bucket; with a prefix → `StorageException`, since the bucket holds keys outside the root. |
 | `http` unsupported operations | `list`, `format()`, and every write, metadata-changing, copy, move, directory, and transaction method → `StorageNotSupportedException`. |
 | `http` `in_transaction()` | Returns `False`. |
-| `http` redirects | → [VALIDATION.md](VALIDATION.md#http-url-join-safety) |
-| `http` URL redaction | → [CONFIG.md](CONFIG.md#secrets) |
 
 ### StorageNull operations
 

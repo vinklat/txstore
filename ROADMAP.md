@@ -5,8 +5,9 @@
 | Phase | Status | Feature | Notes |
 | -- | -- | -- | -- |
 | 0.1.0 | ✅ | Initial public release | fs, S3, HTTP, and null backends; transactions, history, and retention; protobuf-free footmark codec; configuration by arguments or `TX_STORE_*` variables; Debian testing floors |
-| 0.1.3 | ✅ | Bounded reads for untrusted sources | Size cap on `get`, `transfer`, and `get_digests`; `get_stream` body errors mapped to `StorageException`; `StorageNotSupportedException` for unsupported operations → [SETUP.md](SETUP.md#upgrade-notes); needed by debkit 0.1.1 |
+| 0.1.3 | ✅ | Bounded reads for untrusted sources | Size cap on `get`, `transfer`, and `get_digests` |
 | 0.2.0 | ⏳ | Debian package for forky | `python3-txstore`, maintained by the Debian Python Team → [SETUP.md](SETUP.md#debian-package); open: join the team, ITP, team repository on salsa, team sponsor, upload to unstable, migration to testing before the forky soft freeze |
+| 0.2.1 | ⏳ | S3 lock write ambiguous in transport | A lock put that fails in transport rereads the lock and holds it when the body carries its own `owner`, instead of aborting with the body left inside its TTL → [STORAGE.md](STORAGE.md#locking); closes the lock-write transport [known deviation](#known-deviations) |
 | 1.0.0 | ⏳ | Stable API | Freeze the façade before the forky freeze so forky ships an API maintained for the whole release |
 
 ## Ideas

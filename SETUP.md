@@ -162,6 +162,7 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
   `StorageNotSupportedException` → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions);
   `get_stream` returns a wrapper without backend attributes such as `iter_chunks` or `raw`, and
   its body read failures and HTTP `get` streaming change → [STORAGE.md](STORAGE.md#storage-abi).
+  urllib3 2.6 or later is required.
 - 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
   `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
 - 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →

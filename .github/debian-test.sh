@@ -7,7 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
 apt-get install -y -qq --no-install-recommends \
     python3 python3-venv python3-hatchling \
-    python3-boto3 python3-botocore python3-requests \
+    python3-boto3 python3-botocore python3-requests python3-urllib3 \
     python3-pyxattr python3-moto python3-flask python3-flask-cors python3-responses \
     python3-pytest >/dev/null
 

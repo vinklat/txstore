@@ -17,8 +17,8 @@ through a commit, some writes may already be applied → [transactions.md](trans
 - **Streaming digests.** `transfer` copies one object between any two storages in a single pass and
   returns its MD5, SHA-1, SHA-256, and SHA-512 digests; `get_digests` returns them without a copy.
 - **Bounded reads.** `max_size` on `get`, `transfer`, and `get_digests` stops an untrusted source
-  at the limit with `StorageTooLargeException`; a compressed HTTP body is bounded only with
-  urllib3 2.6 or later → [STORAGE.md](../../STORAGE.md#storage-abi).
+  at the limit with `StorageTooLargeException`, a compressed HTTP body included →
+  [STORAGE.md](../../STORAGE.md#storage-abi).
 
 ## End-to-end example
 

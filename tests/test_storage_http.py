@@ -412,7 +412,7 @@ def test_storage_http_get_refuses_a_gzip_bomb_without_decoding_it(
 ) -> None:
     """A small body decoding to 64 MiB is refused within a few MiB of memory.
 
-    Holds from urllib3 2.6 → ROADMAP.md#known-deviations.
+    Relies on the urllib3 2.6 floor → STORAGE.md#storage-abi.
     """
     bomb = bytes(64 * 1024 * 1024)
     for _ in range(layers):

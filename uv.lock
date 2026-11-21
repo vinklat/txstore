@@ -1651,6 +1651,7 @@ dependencies = [
     { name = "botocore" },
     { name = "pyxattr" },
     { name = "requests" },
+    { name = "urllib3" },
 ]
 
 [package.dev-dependencies]
@@ -1672,6 +1673,7 @@ requires-dist = [
     { name = "botocore", specifier = ">=1.40,<2" },
     { name = "pyxattr", specifier = ">=0.8.1,<0.9" },
     { name = "requests", specifier = ">=2.32,<3" },
+    { name = "urllib3", specifier = ">=2.6,<3" },
 ]
 
 [package.metadata.requires-dev]

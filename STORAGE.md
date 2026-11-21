@@ -46,7 +46,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 | Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read from the backend stream, never more. |
 | Size cap below the stream | Buffering below the backend stream can pull up to `CHUNK_SIZE` more from the source. |
-| Size cap on a compressed `http` body | Bounded only as [ROADMAP.md](ROADMAP.md#known-deviations) records. |
+| Size cap on a compressed `http` body | Counts decoded bytes; urllib3 2.6 or later, the declared floor, decodes each read only to its requested size, so a gzip bomb is refused without being decoded whole. |
 | Read metrics: objects | A read counts its object when `get_stream` opens it. |
 | Read metrics: bytes | Counted only through `get`, `get_digests`, or a `transfer` source; a caller reading `get_stream` itself counts none. |
 | Read metrics: errors | A failed open, a failed body read, or a size-cap refusal counts a read error, as any refusal made after the backend answered does. |

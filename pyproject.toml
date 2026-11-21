@@ -26,6 +26,8 @@ dependencies = [
     "botocore>=1.40,<2",
     "pyxattr>=0.8.1,<0.9",
     "requests>=2.32,<3",
+    # Not imported: the floor bounds a compressed http body → STORAGE.md#storage-abi.
+    "urllib3>=2.6,<3",
 ]
 
 [project.urls]

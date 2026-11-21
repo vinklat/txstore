@@ -30,8 +30,9 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | Metadata keys on `fs` | Key `k` is the xattr `user.k`, on every OS; `get_metadata` returns only `user.` xattrs with the prefix dropped, and `delete_metadata` removes only those, so a key never reaches `security.`, `trusted.`, or `system.`. |
 | `put(path, data, metadata=None, acl=None)` / `put_stream(...)` | Write bytes / stream with optional metadata and a backend ACL (`fs` octal mode → [VALIDATION.md](VALIDATION.md#filename-safety), `s3` canned ACL → [S3 ACL rules](#s3-acl-rules)). |
 | `put` metadata on `fs` | Best-effort: an xattr failure after the bytes are written is logged, not raised, and the object stays written. |
-| `put_stream` from a failing stream | → `StorageException` chained from the stream's error, one write error counted, and no object or temp file left. |
-| `put_stream` from a stream raising `StorageException` | The exception propagates unchanged, with one write error counted and no object or temp file left, as from a `transfer` source on a failed read or a size-cap refusal. |
+| `put_stream` from a failing stream | → `StorageException` chained from the stream's error. |
+| `put_stream` from a stream raising `StorageException` | The exception propagates unchanged; a `transfer` source's failed read or size-cap refusal arrives this way. |
+| `put_stream` cleanup after a stream failure | One write error is counted and no object or temp file is left, whatever the stream raised. |
 | `add_metadata(path, metadata, acl=None)` | Merge metadata onto an existing object. |
 | `add_metadata` failures | On a readable backend, a missing object or any backend failure → `StorageException`. On `fs`, a filesystem without xattr support skips the write with a warning. |
 | `delete(path)` / `delete_metadata(path)` / `delete_metadata_fields(path, keys)` | Remove the object / all metadata / named keys; on a readable backend, `delete` of a missing object → `StorageNotFoundException`. |
@@ -47,7 +48,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | Size cap | `max_size` caps `get`, `transfer`, and `get_digests` in bytes; `None` reads any size; valid values → [VALIDATION.md](VALIDATION.md#read-size-cap). |
 | Over the size cap | A larger object → `StorageTooLargeException` once `max_size + 1` bytes are read from the backend stream, never more. |
 | Size cap below the stream | Buffering below the backend stream can pull up to `CHUNK_SIZE` more from the source. |
-| Size cap on a compressed `http` body | Counts decoded bytes; urllib3 2.6 or later, the declared floor, decodes each read only to its requested size, so a gzip bomb is refused without being decoded whole. |
+| Size cap on a compressed `http` body | Counts decoded bytes; urllib3 at its declared floor → [SETUP.md](SETUP.md#dependency-policy) decodes each read only to its requested size, so a gzip bomb is refused without being decoded whole. |
 | Read metrics: objects | A read counts its object when `get_stream` opens it. |
 | Read metrics: bytes | Counted only through `get`, `get_digests`, or a `transfer` source; a caller reading `get_stream` itself counts none. |
 | Read metrics: errors | A failed open, a failed body read, or a size-cap refusal counts a read error, as any refusal made after the backend answered does. |

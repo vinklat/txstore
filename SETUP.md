@@ -92,6 +92,7 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Rule | Detail |
 | -- | -- |
 | Floors | Every runtime dependency's lower bound is available in Debian testing (forky until its release, then the next testing). |
+| Floor-only dependencies | `urllib3` is declared only for its `pyproject.toml` floor, which bounds a compressed `http` body → [STORAGE.md](STORAGE.md#storage-abi). |
 | Python | Every Python version Debian testing ships is supported and in CI. |
 | Typing | Stub and typing-only packages are imported only under `TYPE_CHECKING` and stay in the `dev` group. |
 | Generated code | No module is generated code pinned to a runtime version. |

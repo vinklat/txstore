@@ -55,7 +55,7 @@ Raw calls leave no history record, so `TransactionHistory.revert_last` cannot se
 | -- | -- |
 | `StorageException` | Begin or revert while a transaction is active, commit or discard with none active, reading, copying, moving, or changing the metadata of an object deleted earlier in the same transaction, a malformed history file, a backend failure. |
 | `StorageNotFoundException` | Deleting an object with neither an original nor a staged write, or copying or moving a source that does not exist as the transaction sees it. |
-| `StorageNotSupportedException` | Transaction calls on HTTP or null storage, except `in_transaction()`, which returns `False`; also a `NotImplementedError`. |
+| `StorageNotSupportedException` | Transaction calls on HTTP or null storage, except `in_transaction()`, which returns `False` → [STORAGE.md](../../STORAGE.md#backends); also a `NotImplementedError` → [EXCEPTIONS.md](../../EXCEPTIONS.md#storage-exceptions). |
 
 ## Further reading
 

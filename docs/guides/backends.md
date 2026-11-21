@@ -89,5 +89,8 @@ followed → [VALIDATION.md](../../VALIDATION.md#http-url-join-safety).
 
 ## Further reading
 
-- [STORAGE.md](../../STORAGE.md#backends) and [STORAGE.md](../../STORAGE.md#construction).
-- [CONFIG.md](../../CONFIG.md) and [VALIDATION.md](../../VALIDATION.md#storage-urls).
+- [STORAGE.md](../../STORAGE.md#backends), [STORAGE.md](../../STORAGE.md#construction), and
+  [STORAGE.md](../../STORAGE.md#storage-abi) for reads and the size cap.
+- [CONFIG.md](../../CONFIG.md), [VALIDATION.md](../../VALIDATION.md#storage-urls), and
+  [VALIDATION.md](../../VALIDATION.md#read-size-cap).
+- [EXCEPTIONS.md](../../EXCEPTIONS.md) for the full error list.

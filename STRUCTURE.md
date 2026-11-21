@@ -51,7 +51,7 @@ Modules import each other in the directions below; `tests/test_package.py` asser
 | Load-time cycles | None: no import is deferred → [STYLE.md](STYLE.md#python-baseline). |
 | Type-only imports | `if TYPE_CHECKING:` imports, including the `mypy_boto3_s3` stubs, are exempt from these rules and from the runtime dependency list. |
 | Runtime dependencies | Standard library, plus the modules `boto3`, `botocore`, `requests`, and `xattr` (the `pyxattr` distribution) → [SETUP.md](SETUP.md#dependency-policy). |
-| Floor-only dependencies | `urllib3` is declared and never imported → [SETUP.md](SETUP.md#dependency-policy). |
+| Floor-only dependencies | `urllib3` is declared and never imported; its floor → [SETUP.md](SETUP.md#dependency-policy). |
 
 ## Maintenance
 

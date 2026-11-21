@@ -92,7 +92,7 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Rule | Detail |
 | -- | -- |
 | Floors | Every runtime dependency's lower bound is available in Debian testing (forky until its release, then the next testing). |
-| Floor-only dependencies | `urllib3` 2.6 or later, declared for that floor and never imported. |
+| Floor-only dependencies | `urllib3` 2.6 or later, declared only for that floor. |
 | Python | Every Python version Debian testing ships is supported and in CI. |
 | Typing | Stub and typing-only packages are imported only under `TYPE_CHECKING` and stay in the `dev` group. |
 | Generated code | No module is generated code pinned to a runtime version. |
@@ -162,9 +162,9 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
   [STORAGE.md](STORAGE.md#storage-abi). Breaking: an unsupported operation raises
   `StorageNotSupportedException` → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions); `get_stream`
   returns a wrapper without backend attributes such as `iter_chunks` or `raw`; iterating it yields
-  lines, not S3's 1 KiB chunks; on `s3` and `http`, `tell` raises `io.UnsupportedOperation`; its
-  body read failures and HTTP `get` streaming change → [STORAGE.md](STORAGE.md#storage-abi). urllib3
-  2.6 or later is required.
+  lines, not S3's 1 KiB chunks; on `s3` and `http`, `tell` raises `io.UnsupportedOperation`, and so
+  does `fileno` on `http`; its body read failures and HTTP `get` streaming change →
+  [STORAGE.md](STORAGE.md#storage-abi). urllib3 2.6 or later is required.
 - 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
   `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
 - 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →

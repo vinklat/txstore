@@ -43,8 +43,10 @@ _EXPECTED_ALL = sorted(
         "StorageHTTP",
         "StorageMetrics",
         "StorageNotFoundException",
+        "StorageNotSupportedException",
         "StorageNull",
         "StorageS3",
+        "StorageTooLargeException",
         "StorageType",
         "Timestamp",
         "TransactionHistory",
@@ -69,9 +71,11 @@ _EXPECTED_ALL = sorted(
 # Top-level module names a runtime import may use; distributions are asserted below.
 _THIRD_PARTY_RUNTIME = {"boto3", "botocore", "requests", "xattr"}
 
+# Distributions declared only for their floor, never imported.
+_FLOOR_ONLY = {"urllib3"}
+
 # Modules that import no other txstore module.
 _LEAVES = {
-    "_capabilities",
     "_env",
     "_footmark_wire",
     "_s3_client",
@@ -86,6 +90,8 @@ _BACKEND_IMPORTERS = {"__init__", "factory"}
 # may import at run time; `history` is held by deny rules instead, since its row lists no allowlist.
 _ALLOWED_IMPORTS = {
     "base": {"hexdigest", "metrics"},
+    "_capabilities": {"base"},
+    "_streams": {"base"},
     "url": {"base"},
     "_reserved": {"base"},
     "_fs_paths": {"base"},
@@ -206,7 +212,7 @@ def test_runtime_imports_are_stdlib_or_declared_dependencies() -> None:
 def test_declared_dependencies_match_runtime_imports() -> None:
     project = tomllib.loads((_ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     declared = {dep.split(">")[0].split("<")[0].split("=")[0] for dep in project["dependencies"]}
-    assert declared == {"boto3", "botocore", "pyxattr", "requests"}
+    assert declared == {"boto3", "botocore", "pyxattr", "requests"} | _FLOOR_ONLY
 
 
 def test_only_env_module_reads_the_environment() -> None:

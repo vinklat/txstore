@@ -1,6 +1,6 @@
 [project]
 name = "txstore"
-version = "0.1.2"
+version = "0.1.3"
 description = "Unified object storage for Python: one interface over filesystem, S3, and HTTP, with transactions."
 authors = [{name = "Václav Vinklát"}]
 license = "MIT"
@@ -26,6 +26,8 @@ dependencies = [
     "botocore>=1.40,<2",
     "pyxattr>=0.8.1,<0.9",
     "requests>=2.32,<3",
+    # Not imported: the floor bounds a compressed http body → STORAGE.md#storage-abi.
+    "urllib3>=2.6,<3",
 ]
 
 [project.urls]

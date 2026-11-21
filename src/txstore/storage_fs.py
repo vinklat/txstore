@@ -37,7 +37,7 @@ import shutil
 import stat
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager, suppress
-from typing import IO, Any
+from typing import IO, Any, cast
 
 from txstore._fs_paths import (
     FILE_MODE_MASK,
@@ -55,6 +55,7 @@ from txstore._fs_paths import (
     xattr_errors,
 )
 from txstore._reserved import LOCK_FILENAME, check_reserved_path, is_reserved_path
+from txstore._streams import GuardedStream
 from txstore.base import (
     CHUNK_SIZE,
     Storage,
@@ -356,23 +357,6 @@ class StorageFS(FootmarkMixin, Storage):
         logger.debug("Listing files in %s", self.base_dir)
         return self._overlay_list()
 
-    def get(self, path: str) -> bytes:
-        """Return the complete contents of the file at `path`.
-
-        Raises:
-            StorageNotFoundException: If the file does not exist.
-            StorageException: If the file is marked for deletion or cannot be read.
-        """
-        logger.debug("Reading file: %s", path)
-        with self.get_stream(path) as f:
-            try:
-                data = f.read()
-            except OSError as exc:
-                self.metrics.read_errors_inc()
-                raise StorageException(f"Error reading {path}: {exc}") from exc
-        self.metrics.read_bytes_inc(len(data))
-        return data
-
     def get_metadata(self, path: str) -> dict[str, Any]:
         """Return extended-attribute metadata for `path`.
 
@@ -405,7 +389,8 @@ class StorageFS(FootmarkMixin, Storage):
     def get_stream(self, path: str) -> IO[bytes]:
         """Open `path` for streaming read.
 
-        The caller is responsible for closing the returned handle.
+        The caller is responsible for closing the returned handle; it seeks, and a read failure
+        → `StorageException` → [STORAGE.md](STORAGE.md#storage-abi).
 
         Raises:
             StorageNotFoundException: If the file does not exist.
@@ -429,7 +414,9 @@ class StorageFS(FootmarkMixin, Storage):
             self.metrics.read_errors_inc()
             raise StorageException(f"Error opening {path}: {exc}") from exc
         self.metrics.read_objects_inc()
-        return handle
+        return cast(
+            IO[bytes], GuardedStream(handle, errors=(OSError,), path=path, metrics=self.metrics)
+        )
 
     # =========================================================================
     # Object Operations - Write
@@ -506,7 +493,7 @@ class StorageFS(FootmarkMixin, Storage):
         except StorageException:
             raise
         except Exception as exc:
-            # Only the source stream raises past OSError, e.g. urllib3 under an HTTP transfer.
+            # Only the source stream raises past OSError, e.g. urllib3 from a caller's HTTP body.
             raise StorageException(f"Error reading the stream for {fpath}: {exc}") from exc
 
         if metadata:

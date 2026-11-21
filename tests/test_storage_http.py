@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import base64
 import gzip
+import io
 import logging
 import traceback
+import tracemalloc
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +26,10 @@ from txstore import (
     StorageException,
     StorageHTTP,
     StorageNotFoundException,
+    StorageNotSupportedException,
+    StorageTooLargeException,
     StorageType,
+    calc_digests,
     make_storage,
 )
 
@@ -286,6 +292,147 @@ def test_storage_http_get_stream_returns_raw(storage: StorageHTTP) -> None:
     assert stream.read() == b"chunk1chunk2"
 
 
+class _DroppedConnection(io.RawIOBase):
+    """A socket that yields `head`, then fails as a dropped connection does."""
+
+    def __init__(self, head: bytes) -> None:
+        self._head = head
+
+    def readable(self) -> bool:
+        return True
+
+    def readinto(self, buffer: Any) -> int:
+        if not self._head:
+            raise OSError("connection reset")
+        n = min(len(buffer), len(self._head))
+        buffer[:n] = self._head[:n]
+        self._head = self._head[n:]
+        return n
+
+
+@pytest.mark.parametrize(
+    "read",
+    [lambda s: s.get("big"), lambda s: s.get_stream("big").read()],
+    ids=["get", "get_stream"],
+)
+@responses.activate
+def test_storage_http_maps_a_body_read_failure(
+    storage: StorageHTTP, read: Callable[[StorageHTTP], bytes]
+) -> None:
+    """→ STORAGE.md#storage-abi: urllib3's read error reaches the caller as `StorageException`."""
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/big",
+        body=io.BufferedReader(_DroppedConnection(b"head")),
+        headers={"Content-Length": "100"},
+    )
+    with pytest.raises(StorageException, match="Error reading http://repo.example.com/big") as exc:
+        read(storage)
+    assert isinstance(exc.value.__cause__, requests.RequestException)
+    assert storage.metrics.read_errors_total == 1
+
+
+@responses.activate
+def test_storage_http_body_read_failure_never_names_url_credentials() -> None:
+    """→ CONFIG.md#secrets: userinfo stays out of the message and its chained cause."""
+    storage = StorageHTTP("https://reader:s3cr3t@repo.example.com/base")
+    responses.add(
+        responses.GET,
+        "https://repo.example.com/base/big",
+        body=io.BufferedReader(_DroppedConnection(b"head")),
+        headers={"Content-Length": "100"},
+    )
+    with pytest.raises(StorageException, match="Error reading") as exc:
+        storage.get("big")
+    for text in (str(exc.value), str(exc.value.__cause__)):
+        assert "s3cr3t" not in text
+        assert "reader" not in text
+
+
+@responses.activate
+def test_storage_http_get_stream_reads_in_pieces_and_does_not_seek(storage: StorageHTTP) -> None:
+    responses.add(responses.GET, "http://repo.example.com/big", body=b"chunk1chunk2")
+    with storage.get_stream("big") as stream:
+        assert stream.read(3) == b"chu"
+        assert stream.read(100) == b"nk1chunk2"
+        assert stream.read(1) == b""
+        assert not stream.seekable()
+        with pytest.raises(io.UnsupportedOperation):
+            stream.seek(0)
+
+
+@responses.activate
+def test_storage_http_get_digests_reads_the_decoded_object(storage: StorageHTTP) -> None:
+    """→ STORAGE.md#digests: digests of the object, not of its gzip transport."""
+    body = b"x" * 5000
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/gz",
+        body=gzip.compress(body),
+        headers={"Content-Encoding": "gzip"},
+    )
+    assert storage.get_digests("gz") == calc_digests(body)
+
+
+@responses.activate
+def test_storage_http_get_caps_the_decoded_size(storage: StorageHTTP) -> None:
+    """A gzip body far under the cap still decodes past it → STORAGE.md#storage-abi."""
+    body = b"x" * 5000
+    compressed = gzip.compress(body)
+    assert len(compressed) < 100
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/gz",
+        body=compressed,
+        headers={"Content-Encoding": "gzip"},
+    )
+    assert storage.get("gz", max_size=5000) == body
+    with pytest.raises(StorageTooLargeException, match="gz is larger than 4999 bytes"):
+        storage.get("gz", max_size=4999)
+
+
+@responses.activate
+def test_storage_http_get_holds_about_two_copies_of_the_body(storage: StorageHTTP) -> None:
+    """An uncapped read to the end copies the decoded body once more, not twice."""
+    body = b"x" * (8 * 1024 * 1024)
+    responses.add(responses.GET, "http://repo.example.com/big", body=body)
+    tracemalloc.start()
+    try:
+        assert storage.get("big") == body
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 2.5 * len(body)
+
+
+@pytest.mark.parametrize("layers", [1, 2], ids=["gzip", "gzip-gzip"])
+@responses.activate
+def test_storage_http_get_refuses_a_gzip_bomb_without_decoding_it(
+    storage: StorageHTTP, layers: int
+) -> None:
+    """A small body decoding to 64 MiB is refused within a few MiB of memory.
+
+    Relies on the urllib3 2.6 floor → STORAGE.md#storage-abi.
+    """
+    bomb = bytes(64 * 1024 * 1024)
+    for _ in range(layers):
+        bomb = gzip.compress(bomb)
+    responses.add(
+        responses.GET,
+        "http://repo.example.com/bomb",
+        body=bomb,
+        headers={"Content-Encoding": ", ".join(["gzip"] * layers)},
+    )
+    tracemalloc.start()
+    try:
+        with pytest.raises(StorageTooLargeException):
+            storage.get("bomb", max_size=1024)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert peak < 16 * 1024 * 1024
+
+
 @responses.activate
 def test_storage_http_get_stream_decodes_a_gzip_transfer(storage: StorageHTTP) -> None:
     """A gzip `Content-Encoding` is transport, so the stream yields the object's own bytes."""
@@ -333,6 +480,7 @@ _READ_METHODS = pytest.mark.parametrize(
     [
         ("get", responses.GET),
         ("get_stream", responses.GET),
+        ("get_digests", responses.GET),
         ("get_metadata", responses.HEAD),
         ("exists", responses.HEAD),
     ],
@@ -555,7 +703,7 @@ def test_storage_http_rejected_join_message_redacts_credentials() -> None:
 def test_storage_http_write_methods_raise_not_implemented(
     storage: StorageHTTP, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 
@@ -575,8 +723,8 @@ def test_storage_http_is_never_in_a_transaction(storage: StorageHTTP) -> None:
 def test_storage_http_has_no_transaction_support(
     storage: StorageHTTP, method: str, args: tuple[object, ...]
 ) -> None:
-    """StorageHTTP exposes transaction stubs that raise NotImplementedError."""
-    with pytest.raises(NotImplementedError):
+    """StorageHTTP exposes transaction stubs that raise StorageNotSupportedException."""
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 

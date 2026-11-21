@@ -44,6 +44,7 @@ from txstore import (
     Timestamp,
     TransactionHistory,
     TransactionModel,
+    calc_digests,
     maybe_transaction,
 )
 
@@ -289,7 +290,10 @@ def test_list_in_transaction_shows_what_commit_will_list(
 def test_overlay_reads_agree_on_a_staged_path(
     storage: TxnStorage, existing: bool, stage: Callable[[TxnStorage], object]
 ) -> None:
-    """`exists`, `list`, `get`, and `get_metadata` see one staged state (STORAGE.md#footmarks)."""
+    """`exists`, `list`, `get`, `get_digests`, and `get_metadata` see one staged state.
+
+    → STORAGE.md#footmarks.
+    """
     if existing:
         storage.put("f.txt", b"old")
     storage.transaction_begin()
@@ -297,12 +301,14 @@ def test_overlay_reads_agree_on_a_staged_path(
 
     exists = storage.exists("f.txt")
     assert exists == ("f.txt" in storage.list())
-    for read in (storage.get, storage.get_metadata):
+    for read in (storage.get, storage.get_digests, storage.get_metadata):
         if exists:
             read("f.txt")
         else:
             with pytest.raises(StorageException):
                 read("f.txt")
+    if exists:
+        assert storage.get_digests("f.txt") == calc_digests(storage.get("f.txt"))
 
 
 def _original(s: TxnStorage) -> str:
@@ -2095,7 +2101,7 @@ _OVERLAY_MUTATORS: dict[str, Callable[[TxnStorage], object]] = {
     "move": lambda s: s.move("a.txt", "b.txt"),
 }
 # Reads see staged changes through the overlay → STORAGE.md#footmarks.
-_OVERLAY_READS = {"exists", "get", "get_metadata", "get_stream", "list", "transfer"}
+_OVERLAY_READS = {"exists", "get", "get_digests", "get_metadata", "get_stream", "list", "transfer"}
 # Verbs the overlay does not stage, each for a stated reason.
 _NOT_STAGED = {
     "get_type": "names the backend, no object",

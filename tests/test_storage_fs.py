@@ -32,8 +32,10 @@ from txstore import (
     StorageFS,
     StorageNotFoundException,
     StorageNull,
+    StorageTooLargeException,
     StorageType,
     TransactionHistory,
+    calc_digests,
 )
 
 
@@ -211,18 +213,21 @@ def test_storage_fs_get_stream_returns_a_blocking_handle(storage: StorageFS) -> 
     "error",
     [
         OSError("simulated mid-stream failure"),
-        # A dropped connection under an HTTP transfer: not an OSError.
+        # A dropped connection in a caller's own HTTP body: not an OSError.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
+        StorageException("source read failed"),
     ],
-    ids=["oserror", "urllib3", "other"],
+    ids=["oserror", "urllib3", "other", "storage"],
 )
 def test_storage_fs_put_stream_failure_leaves_no_partial_file(
     storage: StorageFS, error: Exception
 ) -> None:
     stream = FailingStream(error=error)
-    with pytest.raises(StorageException):
+    with pytest.raises(StorageException) as raised:
         storage.put_stream("out.bin", stream)  # type: ignore[arg-type]
+    if isinstance(error, StorageException):
+        assert raised.value is error
 
     assert not storage.exists("out.bin")
     assert storage.metrics.write_errors_total == 1
@@ -384,16 +389,40 @@ def test_storage_fs_read_refuses_a_link_swapped_in_after_resolution(
     assert storage.metrics.read_errors_total == 1
 
 
-def test_storage_fs_get_maps_a_read_failure(storage: StorageFS) -> None:
+class _FailingRead(io.BytesIO):
+    """An opened file whose body read fails, as a disk error does."""
+
+    def read(self, size: int | None = -1) -> bytes:
+        raise OSError("io")
+
+
+@pytest.mark.parametrize(
+    "read",
+    [lambda s: s.get("f.txt"), lambda s: s.get_stream("f.txt").read(4)],
+    ids=["get", "get_stream"],
+)
+def test_storage_fs_maps_a_body_read_failure(
+    storage: StorageFS, read: Callable[[StorageFS], bytes]
+) -> None:
+    """→ STORAGE.md#storage-abi: a read error on the body is a `StorageException`."""
     storage.put("f.txt", b"data")
-    broken = io.BytesIO()
-    broken.read = lambda *_: (_ for _ in ()).throw(OSError("io"))  # type: ignore[method-assign]
     with (
-        patch.object(storage, "get_stream", return_value=broken),
-        pytest.raises(StorageException, match="Error reading f.txt"),
+        patch("builtins.open", return_value=_FailingRead()),
+        pytest.raises(StorageException, match="Error reading f.txt") as excinfo,
     ):
-        storage.get("f.txt")
+        read(storage)
+    assert isinstance(excinfo.value.__cause__, OSError)
     assert storage.metrics.read_errors_total == 1
+
+
+def test_storage_fs_get_stream_seeks(storage: StorageFS) -> None:
+    """A caller can seek an `fs` body, as debkit's `.deb` reader does."""
+    storage.put("s.bin", b"0123456789")
+    with storage.get_stream("s.bin") as fp:
+        assert fp.seekable()
+        fp.seek(4)
+        assert fp.read(3) == b"456"
+        assert fp.tell() == 7
 
 
 @pytest.mark.parametrize(
@@ -916,3 +945,28 @@ def test_storage_fs_copy_or_move_with_auto_mkdir_creates_the_parent(
         storage.transaction_commit()
 
     assert storage.get("sub/b.txt") == b"a"
+
+
+def test_storage_fs_capped_transfer_leaves_no_object_or_temp_file(storage: StorageFS) -> None:
+    """→ STORAGE.md#storage-abi: a source over `max_size` writes nothing at the destination."""
+    storage.put("big.bin", b"x" * 100)
+    with pytest.raises(StorageTooLargeException):
+        storage.transfer("big.bin", storage, "copy.bin", max_size=10)
+    assert os.listdir(storage.base_dir) == ["big.bin"]
+    assert storage.metrics.write_errors_total == 1
+
+
+def test_storage_fs_get_digests_reads_the_object(storage: StorageFS) -> None:
+    """→ STORAGE.md#digests: digests without a sink storage."""
+    body = b"digest me"
+    storage.put("d.bin", body)
+    assert storage.get_digests("d.bin") == calc_digests(body)
+
+
+def test_storage_fs_get_caps_the_size(storage: StorageFS) -> None:
+    """→ STORAGE.md#storage-abi: at the cap the object is read, one byte over it is refused."""
+    storage.put("cap.bin", b"abcd")
+    assert storage.get("cap.bin", max_size=4) == b"abcd"
+    with pytest.raises(StorageTooLargeException, match="cap.bin is larger than 3 bytes"):
+        storage.get("cap.bin", max_size=3)
+    assert storage.metrics.read_errors_total == 1

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
 
 import pytest
 from urllib3.exceptions import ProtocolError
 
-from txstore import StorageException, StorageNull, StorageType
+from txstore import StorageException, StorageNotSupportedException, StorageNull, StorageType
 
 
 @pytest.fixture
@@ -66,6 +67,7 @@ def test_storage_null_format_and_rmdir_are_noops(storage: StorageNull) -> None:
     [
         ("list", ()),
         ("get", ("p",)),
+        ("get_digests", ("p",)),
         ("get_metadata", ("p",)),
         ("exists", ("p",)),
         ("get_stream", ("p",)),
@@ -77,8 +79,25 @@ def test_storage_null_format_and_rmdir_are_noops(storage: StorageNull) -> None:
 def test_storage_null_read_methods_raise(
     storage: StorageNull, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
+
+
+@pytest.mark.parametrize(
+    "read",
+    [
+        lambda s: s.get("p", max_size=-1),
+        lambda s: s.get_digests("p", max_size=-1),
+        lambda s: s.transfer("p", StorageNull(), max_size=-1),
+    ],
+    ids=["get", "get_digests", "transfer"],
+)
+def test_storage_null_capped_reads_refuse_an_invalid_max_size_first(
+    storage: StorageNull, read: Callable[[StorageNull], object]
+) -> None:
+    """→ VALIDATION.md#read-size-cap: the argument is checked before the capability."""
+    with pytest.raises(ValueError, match="max_size"):
+        read(storage)
 
 
 def test_storage_null_is_never_in_a_transaction(storage: StorageNull) -> None:
@@ -97,7 +116,7 @@ def test_storage_null_is_never_in_a_transaction(storage: StorageNull) -> None:
 def test_storage_null_has_no_transaction_support(
     storage: StorageNull, method: str, args: tuple[object, ...]
 ) -> None:
-    with pytest.raises(NotImplementedError):
+    with pytest.raises(StorageNotSupportedException):
         getattr(storage, method)(*args)
 
 
@@ -114,7 +133,7 @@ class _BrokenStream(io.BytesIO):
     "error",
     [
         OSError("read failed"),
-        # A dropped connection under an HTTP transfer: not an OSError.
+        # A dropped connection in a caller's own HTTP body: not an OSError.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
     ],
@@ -128,6 +147,15 @@ def test_storage_null_put_stream_wraps_any_stream_failure(
     assert info.value.__cause__ is error
     assert storage.metrics.dump()["write_errors_total"] == 1
     assert storage.metrics.dump()["write_objects_total"] == 0
+
+
+def test_storage_null_put_stream_lets_a_storage_exception_through(storage: StorageNull) -> None:
+    """→ STORAGE.md#storage-abi: a txstore source's error is not wrapped twice."""
+    error = StorageException("source read failed")
+    with pytest.raises(StorageException) as info:
+        storage.put_stream("p", _BrokenStream(error))
+    assert info.value is error
+    assert storage.metrics.dump()["write_errors_total"] == 1
 
 
 def test_storage_null_put_stream_accepts_metadata(storage: StorageNull) -> None:

@@ -237,11 +237,6 @@ class MemoryTxnStorage(FootmarkMixin, Storage):
         """Regular objects, as the active transaction sees them."""
         return self._overlay_list()
 
-    def get(self, path: str) -> bytes:
-        """Object bytes."""
-        with self.get_stream(path) as stream:
-            return stream.read()
-
     def get_stream(self, path: str) -> IO[bytes]:
         """Object bytes as a stream."""
         full = self._read_target(path)

@@ -12,8 +12,8 @@ The four storage backends, how a URL picks one, and how to configure them with a
 | `http://...`, `https://...` | `StorageHTTP` | yes | no | no |
 | none | `StorageNull` | no | yes (discarded) | no |
 
-`StorageNull` swallows writes; pair it with `transfer` to compute digests without keeping a copy.
-Construct it directly: `StorageNull()`.
+`StorageNull` swallows writes. Construct it directly: `StorageNull()`. To digest an object without
+keeping a copy, call `get_digests` on its storage; no sink is needed.
 
 ## Building a storage
 
@@ -73,8 +73,10 @@ unencoded `/` can parse part of a password as the host and path instead of raisi
 | Error | When |
 | -- | -- |
 | `StorageException` | Empty URL, HTTP or S3 URL without a host, missing S3 credentials, or any backend failure. |
-| `ValueError` | Unsupported scheme, a URL authority that does not parse, a URL query or fragment, an `s3://` URL holding `@`, an `fs://` URL naming a host or a relative path, a missing bucket name or an empty S3 prefix segment (`//`), an invalid ACL, or an invalid environment value → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
-| `NotImplementedError` | `list`, a write, a metadata change, `copy`, `move`, `format()`, or a directory call on HTTP; a read, `list`, `copy`, `move`, or `mkdir` on the null sink; a transaction call on either, except `in_transaction()`, which returns `False` → [STORAGE.md](../../STORAGE.md#backends). |
+| `ValueError` | Unsupported scheme, a URL authority that does not parse, a URL query or fragment, an `s3://` URL holding `@`, an `fs://` URL naming a host or a relative path, a missing bucket name or an empty S3 prefix segment (`//`), an invalid ACL, an invalid environment value, or an invalid `max_size` → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
+| `StorageTooLargeException` | `get`, `transfer`, or `get_digests` with `max_size` meets a larger object → [STORAGE.md](../../STORAGE.md#storage-abi). |
+| `io.UnsupportedOperation` | `seek`, `tell`, or `fileno` on a `get_stream` body from S3 or HTTP; only a filesystem stream seeks. It is also a `ValueError` → [STORAGE.md](../../STORAGE.md#storage-abi). |
+| `StorageNotSupportedException` | `list`, a write, a metadata change, `copy`, `move`, `format()`, or a directory call on HTTP; a read, `list`, `copy`, `move`, or `mkdir` on the null sink; a transaction call on either, except `in_transaction()`, which returns `False`; also a `NotImplementedError` → [STORAGE.md](../../STORAGE.md#backends). |
 
 ## FAQ
 
@@ -87,5 +89,8 @@ followed → [VALIDATION.md](../../VALIDATION.md#http-url-join-safety).
 
 ## Further reading
 
-- [STORAGE.md](../../STORAGE.md#backends) and [STORAGE.md](../../STORAGE.md#construction).
-- [CONFIG.md](../../CONFIG.md) and [VALIDATION.md](../../VALIDATION.md#storage-urls).
+- [STORAGE.md](../../STORAGE.md#backends), [STORAGE.md](../../STORAGE.md#construction), and
+  [STORAGE.md](../../STORAGE.md#storage-abi) for reads and the size cap.
+- [CONFIG.md](../../CONFIG.md), [VALIDATION.md](../../VALIDATION.md#storage-urls), and
+  [VALIDATION.md](../../VALIDATION.md#read-size-cap).
+- [EXCEPTIONS.md](../../EXCEPTIONS.md) for the full error list.

@@ -56,6 +56,88 @@ class StorageNotFoundException(StorageException):
         super().__init__(message)
 
 
+class StorageNotSupportedException(StorageException, NotImplementedError):
+    """Raised when a backend lacks the operation; also a `NotImplementedError`.
+
+    → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions).
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+class StorageTooLargeException(StorageException):
+    """Raised when an object is larger than the `max_size` a read is capped at.
+
+    → [STORAGE.md](STORAGE.md#storage-abi).
+    """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+
+
+def _check_max_size(max_size: int | None) -> None:
+    """Refuse a `max_size` other than None or an integer of 0 or more.
+
+    → [VALIDATION.md](VALIDATION.md#read-size-cap).
+
+    Raises:
+        ValueError: If `max_size` is a bool, not an integer, or negative.
+    """
+    if max_size is None:
+        return
+    if isinstance(max_size, bool) or not isinstance(max_size, int) or max_size < 0:
+        raise ValueError(f"max_size must be None or an integer of 0 or more, not {max_size!r}")
+
+
+class _CappedReader:
+    """Reader that refuses a body larger than `max_size` without reading on.
+
+    It pulls at most `max_size + 1` bytes from `stream`: the extra byte proves the body too large.
+    """
+
+    def __init__(
+        self, stream: IO[bytes], max_size: int | None, path: str, metrics: StorageMetrics
+    ) -> None:
+        self._stream = stream
+        self._max_size = max_size
+        self._path = path
+        self._metrics = metrics
+        self._size = 0
+        # The refusal, raised again to a destination that reads on after swallowing it.
+        self._error: StorageTooLargeException | None = None
+
+    def read(self, size: int = -1) -> bytes:
+        """Read up to `size` bytes, or to the end when `size` is negative, never past the cap.
+
+        Without a cap the read passes straight through, so `fs` sizes one read by the file. With
+        one, a read to the end goes in `CHUNK_SIZE` pieces: a single read of `max_size + 1` bytes
+        would allocate them up front however small the body is.
+
+        Raises:
+            StorageTooLargeException: Once the body is found larger than `max_size`.
+        """
+        if self._error is not None:
+            raise self._error
+        if self._max_size is None:
+            return self._stream.read(size)
+        if size < 0:
+            buffer = io.BytesIO()
+            while chunk := self.read(CHUNK_SIZE):
+                buffer.write(chunk)
+            return buffer.getvalue()
+        remaining = self._max_size + 1 - self._size
+        data = self._stream.read(remaining if size < 0 else min(size, remaining))
+        self._size += len(data)
+        if self._size > self._max_size:
+            self._metrics.read_errors_inc()
+            self._error = StorageTooLargeException(
+                f"{self._path} is larger than {self._max_size} bytes"
+            )
+            raise self._error
+        return data
+
+
 class Storage(ABC):
     """Abstract base class for storage backends.
 
@@ -80,9 +162,52 @@ class Storage(ABC):
     def list(self) -> builtins.list[str]:
         """List all (regular, non-hidden) objects in the storage."""
 
-    @abstractmethod
-    def get(self, path: str) -> bytes:
-        """Return the full content of the object at `path`."""
+    def get(self, path: str, *, max_size: int | None = None) -> bytes:
+        """Return the full content of the object at `path`, read through `get_stream`.
+
+        Args:
+            path: Object path.
+            max_size: Largest size accepted, in bytes; None reads any size
+                → [STORAGE.md](STORAGE.md#storage-abi).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageNotFoundException: If the object is missing.
+            StorageTooLargeException: If the object is larger than `max_size`; at most
+                `max_size + 1` bytes are read from `get_stream`.
+            StorageException: If the object cannot be opened or read.
+        """
+        _check_max_size(max_size)
+        with self.get_stream(path) as stream:
+            data = _CappedReader(stream, max_size, path, self.metrics).read()
+        self.metrics.read_bytes_inc(len(data))
+        return data
+
+    def get_digests(self, path: str, *, max_size: int | None = None) -> dict[str, str]:
+        """Read the object at `path` only to digest it; no sink storage is needed.
+
+        Args:
+            path: Object path.
+            max_size: Largest size accepted, in bytes; None reads any size
+                → [STORAGE.md](STORAGE.md#digests).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageNotFoundException: If the object is missing.
+            StorageTooLargeException: If the object is larger than `max_size`.
+            StorageException: If the object cannot be opened or read.
+
+        Returns:
+            Digests of the object, as `transfer` returns them.
+        """
+        _check_max_size(max_size)
+        with self.get_stream(path) as stream:
+            capped = _CappedReader(stream, max_size, path, self.metrics)
+            fchecksums = ChecksumOpen(cast(IO[bytes], capped))
+            while fchecksums.read(CHUNK_SIZE):
+                pass
+        self.metrics.read_bytes_inc(fchecksums.size)
+        return fchecksums.get_digests()
 
     @abstractmethod
     def get_metadata(self, path: str) -> dict[str, Any]:
@@ -181,6 +306,8 @@ class Storage(ABC):
         storage_dst: Storage,
         path_dst: str | None = None,
         acl: str | None = None,
+        *,
+        max_size: int | None = None,
     ) -> dict[str, str]:
         """Stream an object from this storage to another, computing digests.
 
@@ -189,17 +316,27 @@ class Storage(ABC):
             storage_dst: Destination storage instance.
             path_dst: Destination path. Defaults to `path_src`.
             acl: Optional ACL for the destination object.
+            max_size: Largest size accepted, in bytes; None transfers any size
+                → [STORAGE.md](STORAGE.md#storage-abi).
+
+        Raises:
+            ValueError: If `max_size` is invalid → [VALIDATION.md](VALIDATION.md#read-size-cap).
+            StorageTooLargeException: If the source is larger than `max_size`; the destination
+                keeps no object.
 
         Returns:
             Digests of the transferred object (`MD5Sum`, `SHA1`, `SHA256`,
             `SHA512`, `Size`).
         """
+        _check_max_size(max_size)
         if path_dst is None:
             path_dst = path_src
 
         with self.get_stream(path_src) as fsrc:
-            fchecksums = ChecksumOpen(fsrc)
-            # Every `put_stream` only calls `read`, which `ChecksumOpen` provides.
+            capped = _CappedReader(fsrc, max_size, path_src, self.metrics)
+            fchecksums = ChecksumOpen(cast(IO[bytes], capped))
+            # Every `put_stream` only calls `read`, which `ChecksumOpen` provides, and lets the
+            # refusal propagate unchanged → [STORAGE.md](STORAGE.md#storage-abi).
             storage_dst.put_stream(path_dst, cast(IO[bytes], fchecksums), acl=acl)
 
         # The destination counts its own write in `put_stream`.

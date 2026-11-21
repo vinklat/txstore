@@ -1,7 +1,7 @@
 # Validation contract
 
-Owns: input constraints at the storage-URL, storage-path, configuration, and retention boundaries.
-Routing → [AGENTS.md](AGENTS.md#canonical-sources).
+Owns: input constraints at the storage-URL, storage-path, configuration, retention, and read size
+cap boundaries. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Principles
 
@@ -121,6 +121,15 @@ Implemented by `HistoryRetention.__post_init__` in `txstore/history.py`; variabl
 | -- | -- | -- |
 | `keep` | Integer, 1 or greater; `bool` is not an integer here. | → `ValueError` |
 | `max_age_days` | Integer, 0 to 36500, in days; meaning of `0` → [STORAGE.md](STORAGE.md#retention). | → `ValueError` |
+
+## Read size cap
+
+Implemented by `_check_max_size` in `txstore/base.py`, before any I/O; what the cap does →
+[STORAGE.md](STORAGE.md#storage-abi).
+
+| Rule | Constraint | Failure |
+| -- | -- | -- |
+| `max_size` | `None`, or an integer of 0 or more, in bytes; `bool` is not an integer here. | → `ValueError` |
 
 ## S3 canned ACLs
 

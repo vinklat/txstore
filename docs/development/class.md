@@ -8,7 +8,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 | Concern | Module | Notes |
 | -- | -- | -- |
-| ABI and shared types | `txstore/base.py` | `Storage`, `StorageException`, `StorageNotFoundException`, `StorageType`, `transfer()` |
+| ABI and shared types | `txstore/base.py` | `Storage`, `StorageException`, `StorageNotFoundException`, `StorageTooLargeException`, `StorageNotSupportedException`, `StorageType`, `transfer()`, `get_digests()` |
+| Read streams | `txstore/_streams.py` | `GuardedStream`, the body every backend's `get_stream` returns → [STORAGE.md](../../STORAGE.md#storage-abi) |
 | Transactions | `txstore/transaction.py` | `FootmarkMixin`, `TransactionModel`, `is_transactional` |
 | Reclamation | `txstore/_reclaim.py` | `ReclaimMixin`, inherited by `FootmarkMixin` |
 | Capability stubs | `txstore/_capabilities.py` | `ReadOnlyStorageMixin`, `WriteOnlyStorageMixin`, `TransactionNotSupportedMixin` |
@@ -22,7 +23,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 - `maybe_transaction` and `is_transactional` test `isinstance(storage, FootmarkMixin)`, not a
   structural check: `TransactionNotSupportedMixin` exposes the same method names as
-  `NotImplementedError` stubs, so a structural check would also match the HTTP and null backends.
+  `StorageNotSupportedException` stubs, so a structural check would also match the HTTP and null
+  backends.
 - The algorithm and the overlay live once in `FootmarkMixin`; a backend's public methods route
   through the overlay helpers, and the backend only maps relative paths to its own keys and supplies
   the primitives → [STORAGE.md](../../STORAGE.md#backend-primitives).
@@ -38,7 +40,8 @@ owned by [STORAGE.md](../../STORAGE.md); the user view is [backends.md](../guide
 
 ## Testing notes
 
-`tests/test_capabilities.py` proves the stubs; `tests/test_base.py` the shared `put` and `transfer`;
+`tests/test_capabilities.py` proves the stubs; `tests/test_base.py` the shared `put`, `get`,
+`get_digests`, and `transfer`, size cap included; `tests/test_streams.py` `GuardedStream`;
 `tests/test_storage_*.py` each backend; `tests/test_transactions.py` the mixin on the in-memory
 `MemoryTxnStorage` from `tests/helpers/storage.py` as well as on FS and S3;
 `tests/test_transaction.py` `maybe_transaction` with stubs.

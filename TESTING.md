@@ -41,7 +41,9 @@ not copied here.
 | Area | Required assertion |
 | -- | -- |
 | Storage backends | Shared `Storage` contract, backend-specific behavior, the error mapping of every library failure with its metric, and the transaction lifecycle (begin, commit, discard, revert, staged metadata) where supported, including a primitive failing mid-commit, mid-revert, mid-discard, and mid-staging. |
-| Capability stubs | Read-only and write-only backends prove unsupported operations raise `NotImplementedError`. |
+| Stream reads | A failure while a `get_stream` body is read, and seeking where the backend seeks → [STORAGE.md](STORAGE.md#storage-abi). |
+| Size cap | `max_size` at and over its limit on every backend → [STORAGE.md](STORAGE.md#storage-abi). |
+| Capability stubs | Read-only, write-only, and non-transactional backends prove every unsupported operation raises `StorageNotSupportedException` and is caught as each of its bases → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions). |
 | Construction | URL dispatch, missing-host and empty-URL refusal, `create_path`, credential resolution and refusal, a default ACL never becoming the bucket ACL, `NO_ACL`, TLS verification for S3 and HTTP, the TLS-off warning, and URL credential redaction, chained causes included. |
 | HTTP backend | Redirects refused for every read method, header allowlist, credentials absent from `repr`, logs, and messages. |
 | Transaction wiring | `maybe_transaction` commits on success, discards on failure, is a no-op on a non-transactional storage, and passes its retention policy to the prune. |
@@ -55,7 +57,7 @@ not copied here.
 | Timestamps | Golden text forms for every fraction width and range edge; accepted and rejected parse inputs; range refusal; datetime round trip → [STORAGE.md](STORAGE.md#timestamps). |
 | S3 client | Bucket and object operations against moto; group-ACL carry-over on copy; metadata merge, removal, header and ACL preservation; the multipart rewrite and its abort → [STORAGE.md](STORAGE.md#s3-metadata-rewrites). |
 | Environment | Variable grammar, refusal messages naming the variable, unprefixed names ignored, secrets absent from logs. |
-| Digests | Streamed and in-memory digests, normalization, and the comparison rules → [STORAGE.md](STORAGE.md#digests). |
+| Digests | Streamed and in-memory digests, `get_digests` on every backend and in a transaction, normalization, and the comparison rules → [STORAGE.md](STORAGE.md#digests). |
 
 ## Package contracts
 

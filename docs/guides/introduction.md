@@ -15,7 +15,10 @@ through a commit, some writes may already be applied → [transactions.md](trans
 - **History.** Each committed transaction is recorded in `.transactions.json` at the storage root,
   so the latest one can be reverted and old ones expire by a retention policy.
 - **Streaming digests.** `transfer` copies one object between any two storages in a single pass and
-  returns its MD5, SHA-1, SHA-256, and SHA-512 digests.
+  returns its MD5, SHA-1, SHA-256, and SHA-512 digests; `get_digests` returns them without a copy.
+- **Bounded reads.** `max_size` on `get`, `transfer`, and `get_digests` stops an untrusted source
+  at the limit with `StorageTooLargeException`, a compressed HTTP body included →
+  [STORAGE.md](../../STORAGE.md#storage-abi).
 
 ## End-to-end example
 
@@ -43,8 +46,9 @@ propagates.
 | -- | -- |
 | `StorageException` | A backend operation, transaction, history, or lock step failed. |
 | `StorageNotFoundException` | A missing object → [STORAGE.md](../../STORAGE.md#storage-abi); a `StorageException`. In a transaction → [STORAGE.md](../../STORAGE.md#footmarks). |
-| `ValueError` | A bad URL scheme, ACL name, environment value, or retention value. |
-| `NotImplementedError` | The backend lacks the operation (writes on HTTP, reads on the null sink). |
+| `ValueError` | A bad URL scheme, ACL name, environment value, retention value, or `max_size` → [EXCEPTIONS.md](../../EXCEPTIONS.md#other-errors). |
+| `StorageTooLargeException` | An object read with `max_size` is larger than the cap → [STORAGE.md](../../STORAGE.md#storage-abi); a `StorageException`. |
+| `StorageNotSupportedException` | The backend lacks the operation (writes on HTTP, reads on the null sink) → [STORAGE.md](../../STORAGE.md#backends); both a `StorageException` and a `NotImplementedError` → [EXCEPTIONS.md](../../EXCEPTIONS.md#storage-exceptions). |
 
 ## Further reading
 

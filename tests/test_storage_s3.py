@@ -15,7 +15,7 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from botocore.exceptions import ClientError, EndpointConnectionError
+from botocore.exceptions import ClientError, EndpointConnectionError, ResponseStreamingError
 from helpers.s3 import client_error, is_public, s3_bucket, s3_storage
 from helpers.storage import HISTORY_FILENAME, LOCK_FILENAME, FailingStream, Pipe
 from urllib3.exceptions import ProtocolError
@@ -25,10 +25,12 @@ from txstore import (
     StorageException,
     StorageNotFoundException,
     StorageS3,
+    StorageTooLargeException,
     StorageType,
     Timestamp,
     TransactionHistory,
     TransactionModel,
+    calc_digests,
     maybe_transaction,
     parse_bucket_acl,
     parse_object_acl,
@@ -179,6 +181,44 @@ def test_storage_s3_put_stream_then_get_stream(storage: StorageS3) -> None:
     storage.put_stream("s.bin", io.BytesIO(b"streamed"))
     stream = storage.get_stream("s.bin")
     assert stream.read() == b"streamed"
+
+
+class _BrokenBody(io.BytesIO):
+    """A response body whose connection drops mid-read, as botocore reports it."""
+
+    def read(self, size: int | None = -1) -> bytes:
+        raise ResponseStreamingError(error=ProtocolError("Connection broken"))
+
+
+@pytest.mark.parametrize(
+    "read",
+    [lambda s: s.get("a.txt"), lambda s: s.get_stream("a.txt").read(4)],
+    ids=["get", "get_stream"],
+)
+def test_storage_s3_maps_a_body_read_failure(
+    storage: StorageS3, read: Callable[[StorageS3], bytes]
+) -> None:
+    """→ STORAGE.md#storage-abi: a read error on the body is a `StorageException`."""
+    _put(storage, "a.txt", b"data")
+    with (
+        patch.object(storage._s3_client, "object_get_stream", return_value=_BrokenBody()),
+        pytest.raises(StorageException, match="Error reading S3 object a.txt") as excinfo,
+    ):
+        read(storage)
+    assert isinstance(excinfo.value.__cause__, ResponseStreamingError)
+    assert storage.metrics.read_errors_total == 1
+
+
+def test_storage_s3_get_stream_does_not_seek(storage: StorageS3) -> None:
+    _put(storage, "a.txt", b"data")
+    with storage.get_stream("a.txt") as fp:
+        assert not fp.seekable()
+        with pytest.raises(io.UnsupportedOperation):
+            fp.seek(0)
+        with pytest.raises(io.UnsupportedOperation):
+            fp.tell()
+        with pytest.raises(io.UnsupportedOperation):
+            fp.fileno()
 
 
 # --------------------------------------------------------------------------- #
@@ -405,7 +445,7 @@ def test_put_in_a_transaction_probes_the_staged_footmark(storage_public_verify: 
 @pytest.mark.parametrize(
     "error",
     [
-        # A dropped connection under an HTTP transfer: not a backend error.
+        # A dropped connection in a caller's own HTTP body: not a backend error.
         ProtocolError("Connection broken: IncompleteRead"),
         ValueError("caller stream bug"),
         StorageException("source read failed"),
@@ -952,3 +992,28 @@ def test_create_bucket_maps_a_bucket_create_failure(storage: StorageS3) -> None:
     ):
         storage.create_bucket()
     assert raised.value.__cause__ is _DENIED
+
+
+def test_storage_s3_capped_transfer_leaves_no_object(storage: StorageS3) -> None:
+    """→ STORAGE.md#storage-abi: a source over `max_size` writes nothing at the destination."""
+    _put(storage, "big.bin", b"x" * 100)
+    with pytest.raises(StorageTooLargeException):
+        storage.transfer("big.bin", storage, "copy.bin", max_size=10)
+    assert not storage.exists("copy.bin")
+    assert storage.metrics.write_errors_total == 1
+
+
+def test_storage_s3_get_digests_reads_the_object(storage: StorageS3) -> None:
+    """→ STORAGE.md#digests: digests without a sink storage."""
+    body = b"digest me"
+    _put(storage, "d.bin", body)
+    assert storage.get_digests("d.bin") == calc_digests(body)
+
+
+def test_storage_s3_get_caps_the_size(storage: StorageS3) -> None:
+    """→ STORAGE.md#storage-abi: at the cap the object is read, one byte over it is refused."""
+    _put(storage, "cap.bin", b"abcd")
+    assert storage.get("cap.bin", max_size=4) == b"abcd"
+    with pytest.raises(StorageTooLargeException, match="cap.bin is larger than 3 bytes"):
+        storage.get("cap.bin", max_size=3)
+    assert storage.metrics.read_errors_total == 1

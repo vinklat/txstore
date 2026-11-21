@@ -7,7 +7,7 @@ from io import BytesIO
 
 import pytest
 
-from txstore import FootmarkMixin, Storage
+from txstore import FootmarkMixin, Storage, StorageException, StorageNotSupportedException
 from txstore._capabilities import (
     ReadOnlyStorageMixin,
     TransactionNotSupportedMixin,
@@ -27,6 +27,14 @@ class _NoTxn(TransactionNotSupportedMixin):
     pass
 
 
+def _assert_not_supported(obj: object, method: str, args: tuple[object, ...]) -> None:
+    """The stub raises one error a caller can catch as either base → EXCEPTIONS.md#rules."""
+    with pytest.raises(StorageNotSupportedException) as excinfo:
+        getattr(obj, method)(*args)
+    assert isinstance(excinfo.value, StorageException)
+    assert isinstance(excinfo.value, NotImplementedError)
+
+
 @pytest.mark.parametrize(
     ("method", "args"),
     [
@@ -44,15 +52,13 @@ class _NoTxn(TransactionNotSupportedMixin):
     ],
 )
 def test_read_only_rejects_writes(method: str, args: tuple[object, ...]) -> None:
-    with pytest.raises(NotImplementedError):
-        getattr(_RO(), method)(*args)
+    _assert_not_supported(_RO(), method, args)
 
 
 @pytest.mark.parametrize(
     ("method", "args"),
     [
         ("list", ()),
-        ("get", ("p",)),
         ("get_metadata", ("p",)),
         ("exists", ("p",)),
         ("get_stream", ("p",)),
@@ -62,8 +68,7 @@ def test_read_only_rejects_writes(method: str, args: tuple[object, ...]) -> None
     ],
 )
 def test_write_only_rejects_reads(method: str, args: tuple[object, ...]) -> None:
-    with pytest.raises(NotImplementedError):
-        getattr(_WO(), method)(*args)
+    _assert_not_supported(_WO(), method, args)
 
 
 def test_transaction_not_supported_mixin_is_never_in_a_transaction() -> None:
@@ -80,8 +85,7 @@ def test_transaction_not_supported_mixin_is_never_in_a_transaction() -> None:
     ],
 )
 def test_transaction_not_supported_mixin(method: str, args: tuple[object, ...]) -> None:
-    with pytest.raises(NotImplementedError):
-        getattr(_NoTxn(), method)(*args)
+    _assert_not_supported(_NoTxn(), method, args)
 
 
 @pytest.mark.parametrize(
@@ -95,8 +99,7 @@ def test_transaction_not_supported_mixin(method: str, args: tuple[object, ...]) 
     ],
 )
 def test_transaction_not_supported_rejects_reclaim(method: str, args: tuple[object, ...]) -> None:
-    with pytest.raises(NotImplementedError):
-        getattr(_NoTxn(), method)(*args)
+    _assert_not_supported(_NoTxn(), method, args)
 
 
 def _public_methods(cls: type) -> dict[str, list[str]]:
@@ -110,7 +113,8 @@ def _public_methods(cls: type) -> dict[str, list[str]]:
 
 def test_transaction_stub_names_every_transactional_method() -> None:
     """A method missing from the stub raises `AttributeError` on a backend without
-    transactions, where the contract asks for `NotImplementedError` → STORAGE.md#backends."""
+    transactions, where the contract asks for `StorageNotSupportedException`
+    → STORAGE.md#backends."""
     mixin = {
         name: params
         for name, params in _public_methods(FootmarkMixin).items()

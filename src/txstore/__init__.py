@@ -11,7 +11,7 @@ Concrete backends and helpers:
 
 Transactions are exposed through `FootmarkMixin` (mixed into FS/S3).
 Backends that do not support them still expose the `transaction_*` names
-as `NotImplementedError` stubs; use `is_transactional()` as the capability
+as `StorageNotSupportedException` stubs; use `is_transactional()` as the capability
 test.
 """
 
@@ -25,6 +25,8 @@ from txstore.base import (
     Storage,
     StorageException,
     StorageNotFoundException,
+    StorageNotSupportedException,
+    StorageTooLargeException,
     StorageType,
 )
 from txstore.factory import NO_ACL, make_storage
@@ -89,8 +91,10 @@ __all__ = [
     "StorageHTTP",
     "StorageMetrics",
     "StorageNotFoundException",
+    "StorageNotSupportedException",
     "StorageNull",
     "StorageS3",
+    "StorageTooLargeException",
     "StorageType",
     "Timestamp",
     "TransactionHistory",

@@ -41,8 +41,8 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 
 | Command | Effect |
 | -- | -- |
-| `make test` | Every test with the coverage gate; a test whose backend is missing skips |
-| `make test-strict` | The same, with `--strict-backends`: a missing backend fails |
+| `make test` | Every test with the coverage gate |
+| `make test-strict` | The same, with backend skips as failures → [TESTING.md](TESTING.md#harness-and-gates) |
 | `uv run pytest tests/test_x.py -k name` | One file or test |
 
 ## Quality gates
@@ -104,7 +104,7 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. The Debian package's test set → [Debian package](#debian-package). |
 | Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, `Makefile`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
 | CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). |
-| Local Debian run | `make debian-test` runs `.github/debian-test.sh` in a throwaway container; needs Docker. |
+| Local Debian run | `make debian-test` runs `.github/debian-test.sh` in a throwaway container of the `debian-testing` job's image (`DEBIAN_IMAGE`), renamed with it; needs Docker. |
 
 A floor raise names the Debian testing version that satisfies it in the change description.
 

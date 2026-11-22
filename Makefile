@@ -1,7 +1,7 @@
 # Developer commands and quality gates → SETUP.md#quality-gates. CI runs these targets.
 
-UV := uv run
-MDFORMAT := $(UV) mdformat --compact-tables --number --wrap 100
+RUN := uv run --locked
+MDFORMAT := $(RUN) mdformat --compact-tables --number --wrap 100
 # The debian-testing job's container in .github/workflows/ci.yml → SETUP.md#dependency-policy.
 DEBIAN_IMAGE := debian:forky
 
@@ -15,30 +15,30 @@ install: ## Sync the virtualenv from uv.lock
 	uv sync --locked
 
 fmt: ## Format Python and Markdown (root and docs/), auto-fix lint
-	$(UV) ruff format .
-	$(UV) ruff check --fix .
+	$(RUN) ruff format .
+	$(RUN) ruff check --fix .
 	$(MDFORMAT) *.md docs
 
 lint: ## Format check (Python, Markdown), lint, strict type check
-	$(UV) ruff format --check .
+	$(RUN) ruff format --check .
 	$(MDFORMAT) --check *.md docs
-	$(UV) ruff check .
-	$(UV) mypy
+	$(RUN) ruff check .
+	$(RUN) mypy
 
 test: ## Tests with the coverage gate; missing backends skip
-	$(UV) pytest --cov
+	$(RUN) pytest --cov
 
 test-strict: ## Tests with the coverage gate; a missing backend fails (CI, dev container)
-	$(UV) pytest --cov --strict-backends
+	$(RUN) pytest --cov --strict-backends
 
 docs-check: ## Contract and docs parity
-	$(UV) python scripts/check_docs.py
+	$(RUN) python scripts/check_docs.py
 
 diagrams: ## Render stale PlantUML diagrams (needs Docker)
-	$(UV) python scripts/render_diagrams.py
+	$(RUN) python scripts/render_diagrams.py
 
 diagrams-check: ## Check diagram SVGs are fresh (offline)
-	$(UV) python scripts/render_diagrams.py --check
+	$(RUN) python scripts/render_diagrams.py --check
 
 lock-check: ## Check uv.lock matches pyproject.toml
 	uv lock --check

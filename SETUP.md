@@ -49,7 +49,8 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 
 Run `make check` before submitting. `.github/workflows/ci.yml` runs `make static` in its `lint` job
 and `make test-strict` in its `test` job, on pushes to `main`, on pull requests, weekly, and before
-each release. The `Makefile` holds each command line; `make help` lists the targets.
+each release. The `Makefile` holds each command line; `make help` lists the targets. Targets run
+with `uv run --locked`: after editing `pyproject.toml`, run `uv lock`.
 
 | Target | Gates |
 | -- | -- |

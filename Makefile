@@ -50,8 +50,9 @@ static: lint docs-check diagrams-check lock-check build ## Every gate except tes
 
 check: static test ## Every quality gate
 
-# COPYFILE_DISABLE keeps macOS tar from adding AppleDouble ._* files; GNU tar ignores it.
+# Copies the files git tracks or would track, uncommitted edits included. COPYFILE_DISABLE keeps
+# macOS tar from adding AppleDouble ._* files; GNU tar ignores it.
 debian-test: ## The CI debian-testing job in a throwaway container (needs Docker)
-	COPYFILE_DISABLE=1 tar -c --exclude=./.git --exclude=./.venv --exclude=./dist --exclude='*_cache' . \
+	git ls-files -z --cached --others --exclude-standard | COPYFILE_DISABLE=1 tar -c --null -T - \
 		| docker run --rm -i $(DEBIAN_IMAGE) \
 			sh -c 'mkdir /src && cd /src && tar -x && sh .github/debian-test.sh'

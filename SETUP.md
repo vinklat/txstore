@@ -134,7 +134,7 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
 | Version parity | `check_docs.py` fails when the two differ. |
 | `__version__` | Read from the installed distribution. |
 | Changelog | Add each new public name, breaking change, and renamed or removed setting as a `Change` and `Migration` row under `## Unreleased`, in the same change → [CHANGELOG.md](CHANGELOG.md). |
-| Version bump | `uv version --bump patch` (or `minor`, `major`), the README line to match, and the `CHANGELOG.md` heading `## Unreleased` renamed to `## <version> - <YYYY-MM-DD>` below a new empty `## Unreleased`. |
+| Version bump | `uv version --bump patch` (or `minor`, `major`), the README line to match, and the `CHANGELOG.md` heading `## Unreleased` renamed to `## <version> - <YYYY-MM-DD>`, given a one-line summary and a `Release →` link to its GitHub release, below a new empty `## Unreleased`. |
 | Pre-1.0 versions | A minor bump starts a [ROADMAP.md](ROADMAP.md#releases) release; every other release is a patch, new public names and breaking changes included. Semantic versioning applies from 1.0.0. |
 | Steps | Version bump → [quality gates](#quality-gates) → merge to `main` → `git tag vX.Y.Z` on `main` → `git push origin vX.Y.Z`. |
 | Trigger | Pushing a tag `vX.Y.Z`, with or without a suffix (e.g. `v0.2.0rc1`). |

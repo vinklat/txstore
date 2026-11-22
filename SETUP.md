@@ -54,8 +54,8 @@ each release. The `Makefile` holds each command line; `make help` lists the targ
 | Target | Gates |
 | -- | -- |
 | `make install` | The venv matches `uv.lock` |
-| `make fmt` | Formats Python and the root `*.md`; applies lint fixes |
-| `make lint` | Python and the root `*.md` are formatted; lint passes; strict types → [STYLE.md](STYLE.md#python-baseline) |
+| `make fmt` | Formats Python, the root `*.md`, and `docs/`; applies lint fixes |
+| `make lint` | Python, the root `*.md`, and `docs/` are formatted; lint passes; strict types → [STYLE.md](STYLE.md#python-baseline) |
 | `make test` | → [Test](#test) |
 | `make test-strict` | → [Test](#test) |
 | `make docs-check` | `check_docs.py`, below |

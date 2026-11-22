@@ -14,14 +14,14 @@ help: ## List targets
 install: ## Sync the virtualenv from uv.lock
 	uv sync --locked
 
-fmt: ## Format Python and root Markdown, auto-fix lint
+fmt: ## Format Python and Markdown (root and docs/), auto-fix lint
 	$(UV) ruff format .
 	$(UV) ruff check --fix .
-	$(MDFORMAT) *.md
+	$(MDFORMAT) *.md docs
 
-lint: ## Format check (Python, root Markdown), lint, strict type check
+lint: ## Format check (Python, Markdown), lint, strict type check
 	$(UV) ruff format --check .
-	$(MDFORMAT) --check *.md
+	$(MDFORMAT) --check *.md docs
 	$(UV) ruff check .
 	$(UV) mypy
 

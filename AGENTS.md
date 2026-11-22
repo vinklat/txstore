@@ -48,7 +48,7 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | Contract / doc edit | Writing rules below → owning contract | `scripts/check_docs.py`, `SETUP.md` quality gates |
 | Debian packaging | `SETUP.md` Debian package | `ROADMAP.md` releases, `.github/debian-test.sh` |
 | Release | `SETUP.md` release | `.github/workflows/release.yml`, `CHANGELOG.md`, `ROADMAP.md` releases |
-| Quality gate / CI / dev container change | `SETUP.md` quality gates | `.github/workflows/ci.yml`, `.devcontainer/` |
+| Quality gate / CI / dev container change | `SETUP.md` quality gates, `Makefile` | `.github/workflows/ci.yml`, `.devcontainer/` |
 | Developer explanation / diagram | `docs/development/` | Owning root contract, `SETUP.md` diagrams |
 | User how-to / future behavior | `docs/guides/` / `ROADMAP.md` | Owning root contract before implementing |
 
@@ -61,8 +61,8 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
    setting → [CONFIG.md](CONFIG.md#maintenance); a new public name →
    [STRUCTURE.md](STRUCTURE.md#maintenance).
 3. Add the narrowest test that falsifies the change per [TESTING.md](TESTING.md#maintenance).
-4. Run the [SETUP.md quality gates](SETUP.md#quality-gates); contract and `docs/` edits also run
-   `uv run python scripts/check_docs.py`. CI runs the gates again.
+4. Run `make check`, the [SETUP.md quality gates](SETUP.md#quality-gates); contract and `docs/`
+   edits also run `make fmt docs-check`. CI runs the gates again.
 
 ## Contract writing rules
 
@@ -78,4 +78,4 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 - No TODOs or "current exception" notes in contracts; record them in
   [ROADMAP.md known deviations](ROADMAP.md#known-deviations) and link.
 - Wrap prose at 100 columns; table rows are exempt. Prefer `→` shortcuts to sentences.
-- After any contract or `docs/` edit run `uv run python scripts/check_docs.py`.
+- After any contract or `docs/` edit run `make fmt docs-check`.

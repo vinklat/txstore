@@ -7,10 +7,11 @@ release. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 - Python 3.13 or newer. `fs://` metadata needs a filesystem with extended attributes.
 - Library users: `pip install txstore`.
-- Contributors: [uv](https://docs.astral.sh/uv/); dependencies resolve from public PyPI only.
+- Contributors: [uv](https://docs.astral.sh/uv/) and GNU make; dependencies resolve from public PyPI
+  only. Every command runs from the repository root; `make` lists the targets.
 
 ```bash
-uv sync
+make install
 ```
 
 A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-container).
@@ -26,9 +27,9 @@ A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-containe
 | Python | Debian's `python3`, preferred over uv-managed Pythons. |
 | Other Python | `UV_PYTHON=<version> uv sync` rebuilds the venv on that version, downloading it if Debian lacks it; the venv keeps it until the next sync. |
 | Environment | `UV_PROJECT_ENVIRONMENT` puts the venv outside the workspace; the host `.venv` on the bind mount stays untouched. |
-| Setup | `uv sync --locked` on create. |
+| Setup | `uv sync --locked` on create; the image installs `make`. |
 | User | Non-root `dev` without sudo, so the tests that skip as root run; for root, `docker exec -u root`. |
-| Tests | `uv run pytest --cov --strict-backends` passes: every backend leg → [TESTING.md](TESTING.md#harness-and-gates) is available. |
+| Tests | `make test-strict` passes: every backend leg → [TESTING.md](TESTING.md#harness-and-gates) is available. |
 | Diagrams | No Docker inside: render on the host → [diagrams](#diagrams). |
 | uv | Pinned by tag and digest in the `Dockerfile`, as a third-party binary; a bump updates both. |
 | Check | Not in CI: after a change to `.devcontainer/`, rebuild it and run every quality gate inside. |
@@ -38,35 +39,40 @@ A Linux environment with xattrs and POSIX ACLs → [dev container](#dev-containe
 Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage →
 [TESTING.md](TESTING.md#required-coverage).
 
-```bash
-uv run pytest
-uv run pytest --cov
-```
+| Command | Effect |
+| -- | -- |
+| `make test` | Every test with the coverage gate; a test whose backend is missing skips |
+| `make test-strict` | The same, with `--strict-backends`: a missing backend fails |
+| `uv run pytest tests/test_x.py -k name` | One file or test |
 
 ## Quality gates
 
-Run every row before submitting. `.github/workflows/ci.yml` runs the check rows on pushes to `main`,
-on pull requests, weekly, and before each release; it checks the lockfile through
-`uv sync --locked`.
+Run `make check` before submitting. `.github/workflows/ci.yml` runs `make static` in its `lint` job
+and `make test-strict` in its `test` job, on pushes to `main`, on pull requests, weekly, and before
+each release. The `Makefile` owns each command; `make help` lists the targets.
 
-| Check | Command |
+| Target | Runs |
 | -- | -- |
-| Format | `uv run ruff format` |
-| Format check | `uv run ruff format --check .` |
-| Lint | `uv run ruff check .` (locally `--fix`) |
-| Type check | `uv run mypy`; mode and scope → [STYLE.md](STYLE.md#python-baseline) |
-| Tests | `uv run pytest --cov`; the CI `test` job adds `--strict-backends`, the Debian job does not |
-| Lockfile | `uv lock --check` |
-| Contract docs | `uv run python scripts/check_docs.py` |
-| Diagrams | `uv run python scripts/render_diagrams.py --check` |
-| Build | `uv build` |
+| `make install` | `uv sync --locked`: the venv from `uv.lock` |
+| `make fmt` | `ruff format`, `ruff check --fix`, and `mdformat` on the root `*.md` |
+| `make lint` | `ruff format --check`, `mdformat --check` on the root `*.md`, `ruff check`, `mypy`; mode and scope → [STYLE.md](STYLE.md#python-baseline) |
+| `make test` | `pytest --cov` → [Test](#test) |
+| `make test-strict` | `pytest --cov --strict-backends`; the Debian job runs neither → [dependency policy](#dependency-policy) |
+| `make docs-check` | `scripts/check_docs.py` |
+| `make diagrams-check` | `scripts/render_diagrams.py --check` → [diagrams](#diagrams) |
+| `make lock-check` | `uv lock --check` |
+| `make build` | `uv build` |
+| `make static` | `lint`, `docs-check`, `diagrams-check`, `lock-check`, `build` |
+| `make check` | `static`, then `test` |
+
+`mdformat` runs with `--compact-tables --number --wrap 100`, from the locked `dev` group.
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
 markers in contracts, the `docs/*/README.md` indexes, the README version, a dated `CHANGELOG.md`
-section for the `pyproject.toml` version, PyPI-only package sources, and the [diagram](#diagrams)
-fence and embed rules.
+section for the `pyproject.toml` version, PyPI-only package sources, the [diagram](#diagrams) fence
+and embed rules, and `make` targets: each one a document cites exists, and this file cites each one.
 
 ## Diagrams
 
@@ -78,11 +84,11 @@ GitHub does not render PlantUML, so diagrams are committed as SVG next to their 
 | No URL | A source contains no URL: renders run offline. |
 | Embed | A document embeds each rendered `.svg` as an inline Markdown image with a bare relative path and an optional title; reference-style images and `<path>` destinations do not count. `check_docs.py` reports an SVG that no document displays that way. |
 | Fences | No document opens a `plantuml` or `puml` fence; `check_docs.py` reports one outside another fenced block. |
-| Render | `uv run python scripts/render_diagrams.py` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network. |
+| Render | `make diagrams` renders each stale source through the pinned `plantuml/plantuml` Docker image with no network. |
 | Force | `render_diagrams.py --force` renders every source, stale or not. |
 | Docker | Rendering needs Docker; `--check` does not. |
 | Stamp | Line 1 of each SVG carries the PlantUML version and a SHA-256 of the image, the PlantUML arguments, and the source. |
-| Check | `render_diagrams.py --check` reports, offline, a `.puml` under `docs/` outside a `diagrams/` directory, a URL in a source, a missing or stale SVG, and an SVG without its source. |
+| Check | `make diagrams-check` (`render_diagrams.py --check`) reports, offline, a `.puml` under `docs/` outside a `diagrams/` directory, a URL in a source, a missing or stale SVG, and an SVG without its source. |
 | Upgrade | Changing `IMAGE` or `RENDER_ARGS` in the script marks every SVG stale; re-render and commit them together. |
 | Diff | `.gitattributes` marks rendered SVGs `linguist-generated`, so GitHub collapses their diffs. |
 
@@ -98,8 +104,8 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Typing | Stub and typing-only packages are imported only under `TYPE_CHECKING` and stay in the `dev` group. |
 | Generated code | No module is generated code pinned to a runtime version. |
 | Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. The Debian package's test set → [Debian package](#debian-package). |
-| Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
-| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). |
+| Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, `Makefile`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
+| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). `make debian-test` runs it locally in a throwaway container (needs Docker). |
 
 A floor raise names the Debian testing version that satisfies it in the change description.
 

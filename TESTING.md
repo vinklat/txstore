@@ -6,7 +6,7 @@ not copied here.
 
 ## Harness and gates
 
-- Run with `uv run pytest` → [SETUP.md](SETUP.md#test).
+- Run with `make test` → [SETUP.md](SETUP.md#test).
 - Keep tests offline: no real network and no real cloud account. S3 tests use the session-scoped
   `moto_server` fixture; HTTP tests use `responses`.
 - `tests/conftest.py` clears every `TXSTORE_*` variable before each test; a test sets one with
@@ -27,7 +27,7 @@ not copied here.
 | Gate | Contract |
 | -- | -- |
 | Validation | Every rule in `VALIDATION.md` has a success and a failure case. |
-| Coverage | `uv run pytest --cov` measures the `[tool.coverage.run]` source package and fails below its branch-coverage `fail_under` in `pyproject.toml`. |
+| Coverage | `make test` (`pytest --cov`) measures the `[tool.coverage.run]` source package and fails below its branch-coverage `fail_under` in `pyproject.toml`. |
 | Scripts | `scripts/` is outside the coverage source; the Contract docs and Diagrams rows hold its tests. |
 | Configuration | Every `CONFIG.md` setting is asserted in the [resolution order](CONFIG.md#resolution). |
 | Schemes | Every URL-routable storage scheme has direct backend tests. |

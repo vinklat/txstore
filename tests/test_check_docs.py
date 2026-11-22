@@ -285,3 +285,30 @@ def test_package_sources_refuse_custom_indexes(repo: Path) -> None:
         "pyproject.toml: declares [[tool.uv.index]]; packages resolve from PyPI",
         "uv.lock: b resolves from https://mirror.example/simple",
     ]
+
+
+# Makefile targets
+
+_MAKEFILE = "help: ## List\n\t@true\n\nlint: ## Lint\n\t@true\n\nstatic: lint ## Gates\n\nhidden:\n"
+
+
+def test_make_targets_cited_exist_and_setup_cites_all(repo: Path) -> None:
+    _write(repo, "Makefile", _MAKEFILE)
+    docs = {
+        "SETUP.md": "| `make help` | x |\n| `make lint static` | x |\n",
+        "A.md": "Run `make lint` or call `make_storage()`; `make restore dir=x confirm=yes`.\n",
+    }
+    assert check_docs.check_make_targets(docs) == ["A.md:1: make restore is not a Makefile target"]
+
+
+def test_make_targets_report_undocumented_and_hidden_targets(repo: Path) -> None:
+    _write(repo, "Makefile", _MAKEFILE)
+    docs = {"SETUP.md": "`make help lint`\n\n```\nmake static\n```\n", "A.md": "`make hidden`\n"}
+    assert check_docs.check_make_targets(docs) == [
+        "A.md:1: make hidden is not a Makefile target",
+        "Makefile: target static is not documented in SETUP.md",
+    ]
+
+
+def test_make_targets_require_makefile(repo: Path) -> None:
+    assert check_docs.check_make_targets({}) == ["Makefile: not found"]

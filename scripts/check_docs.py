@@ -22,7 +22,9 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
 - the ``README.md`` "Current version" line equals ``[project].version``;
 - ``CHANGELOG.md`` has a dated ``## <version> - <YYYY-MM-DD>`` section for ``[project].version``;
 - packages resolve from public PyPI only: ``pyproject.toml`` declares no custom index and every
-  ``uv.lock`` registry is ``https://pypi.org/simple``.
+  ``uv.lock`` registry is ``https://pypi.org/simple``;
+- every ``make <target>`` cited in inline code names a ``## ``-documented ``Makefile`` target, and
+  ``SETUP.md`` cites every such target.
 
 Code facts are read from the source tree with ``ast``, never imported, so the checker runs with
 only the standard library, as in CI.
@@ -76,6 +78,10 @@ CODE_REF_RE = re.compile(r"\b([A-Z][A-Z]+\.md)#([a-z0-9-]+)")
 ENV_NAME_RE = re.compile(r"^`(TXSTORE_[A-Z0-9_]+)`$")
 EXCEPTION_TOKEN_RE = re.compile(r"`([A-Z][A-Za-z0-9]*Exception)`")
 EXCEPTION_CELL_RE = re.compile(r"^`([A-Z][A-Za-z0-9]*Exception)`$")
+# A self-documented ``Makefile`` target: ``name: [prerequisites] ## help``.
+MAKE_TARGET_RE = re.compile(r"^([a-z][a-z-]*):.*## ", re.MULTILINE)
+# Inline code citing make: ``make <target> [<target>...]``, optionally followed by ``var=value``.
+MAKE_CITE_RE = re.compile(r"`make((?: [a-z][a-z-]*)+)(?: [^`]*)?`")
 
 Lines = list[tuple[int, str]]
 Table = tuple[int, list[str], list[tuple[int, list[str]]]]
@@ -482,6 +488,29 @@ def check_package_sources() -> list[str]:
     return errors
 
 
+def check_make_targets(docs: dict[str, str]) -> list[str]:
+    """Cited ``make`` targets exist; ``SETUP.md`` cites every documented ``Makefile`` target."""
+    makefile = REPO_ROOT / "Makefile"
+    if not makefile.is_file():
+        return ["Makefile: not found"]
+    defined = set(MAKE_TARGET_RE.findall(makefile.read_text()))
+    errors: list[str] = []
+    cited_in_setup: set[str] = set()
+    for name, text in docs.items():
+        for lineno, line in _prose_lines(text):
+            for match in MAKE_CITE_RE.finditer(line):
+                for target in match.group(1).split():
+                    if target not in defined:
+                        errors.append(f"{name}:{lineno}: make {target} is not a Makefile target")
+                    elif name == "SETUP.md":
+                        cited_in_setup.add(target)
+    errors += [
+        f"Makefile: target {target} is not documented in SETUP.md"
+        for target in sorted(defined - cited_in_setup)
+    ]
+    return errors
+
+
 def main() -> int:
     """Run every check; print failures; exit 1 on any failure."""
     docs = _root_markdown()
@@ -505,6 +534,7 @@ def main() -> int:
         *check_version(docs),
         *check_changelog(docs),
         *check_package_sources(),
+        *check_make_targets(all_docs),
     ]
     for error in errors:
         print(error)

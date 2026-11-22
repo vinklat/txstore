@@ -30,10 +30,9 @@ The repository root holds the contract documents: the single source of truth for
 written for implementers and automation. You do not need them to use the library. Which contract
 owns what → [AGENTS.md](../../AGENTS.md#canonical-sources).
 
-Four root documents are not contracts: the project [README](../../README.md) introduces the
-library, [ROADMAP.md](../../ROADMAP.md) records planned work and known deviations,
-[CHANGELOG.md](../../CHANGELOG.md) records released changes and upgrade notes, and `AGENTS.md`
-itself routes rather than rules.
+Upgrade notes for each release → [CHANGELOG.md](../../CHANGELOG.md); planned work →
+[ROADMAP.md](../../ROADMAP.md). Neither is a contract →
+[AGENTS.md](../../AGENTS.md#source-priority).
 
 ## For contributors
 

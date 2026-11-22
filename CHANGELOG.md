@@ -41,6 +41,6 @@ Renamed environment variable prefix. Release →
 
 ## 0.1.0 - 2026-11-07
 
-Initial public release: fs, S3, HTTP, and null backends; transactions, history, and retention; a
-protobuf-free footmark codec; configuration by arguments or `TX_STORE_*` variables; Debian testing
-floors. Release → [v0.1.0](https://github.com/vinklat/txstore/releases/tag/v0.1.0).
+Initial public release: fs, S3, HTTP, and null backends; transactions, history, and retention;
+configuration by arguments or `TX_STORE_*` variables; Debian testing floors. Release →
+[v0.1.0](https://github.com/vinklat/txstore/releases/tag/v0.1.0).

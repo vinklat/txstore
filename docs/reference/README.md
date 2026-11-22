@@ -1,7 +1,7 @@
 # Reference artifacts
 
-Non-canonical reference material for contributors and tooling. Root contracts and the
-implementation remain authoritative.
+Non-canonical reference material for contributors and tooling. Root contracts and the implementation
+remain authoritative.
 
 ## Sources
 

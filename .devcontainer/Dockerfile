@@ -9,7 +9,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e
 # gcc, libc6-dev, and python3-dev build pyxattr, which PyPI ships as an sdist only.
 RUN apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        ca-certificates git python3 python3-dev gcc libc6-dev \
+        ca-certificates git make python3 python3-dev gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 1000 dev \
     && useradd --uid 1000 --gid dev --create-home --shell /bin/bash dev

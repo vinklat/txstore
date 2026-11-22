@@ -48,6 +48,8 @@ dev = [
     "types-requests>=2.32,<3",
     "moto[s3,server]>=5.1,<6",
     "responses>=0.25,<1",
+    "mdformat>=1.0,<2",
+    "mdformat-gfm>=1.0,<2",
 ]
 
 [tool.ruff]
@@ -135,6 +137,7 @@ include = [
     "scripts",
     "/*.md",
     "LICENSE",
+    "Makefile",
     "pyproject.toml",
     "uv.lock",
 ]

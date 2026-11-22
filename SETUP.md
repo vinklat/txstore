@@ -47,10 +47,12 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 
 ## Quality gates
 
-Run `make check` before submitting. `.github/workflows/ci.yml` runs `make static` in its `lint` job
-and `make test-strict` in its `test` job, on pushes to `main`, on pull requests, weekly, and before
-each release. The `Makefile` holds each command line; `make help` lists the targets. Targets run
-with `uv run --locked`: after editing `pyproject.toml`, run `uv lock`.
+Run `make check` before submitting; it skips missing backend legs, and `make test-strict` in the
+[dev container](#dev-container) matches CI. `.github/workflows/ci.yml` runs `make static` in its
+`lint` job and `make test-strict` in its `test` job, on pushes to `main`, on pull requests, weekly,
+and before each release; its `debian-testing` job runs outside `make` →
+[dependency policy](#dependency-policy). The `Makefile` holds each command line; `make help` lists
+the targets. Targets run with `uv run --locked`: after editing `pyproject.toml`, run `uv lock`.
 
 | Target | Gates |
 | -- | -- |
@@ -104,7 +106,7 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Generated code | No module is generated code pinned to a runtime version. |
 | Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. The Debian package's test set → [Debian package](#debian-package). |
 | Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, `Makefile`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
-| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). |
+| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index, without `make`, coverage, or `--strict-backends`; triggers → [quality gates](#quality-gates). |
 | Local Debian run | `make debian-test` runs `.github/debian-test.sh` in a throwaway container of the `debian-testing` job's image (`DEBIAN_IMAGE`), renamed with it; needs Docker. |
 
 A floor raise names the Debian testing version that satisfies it in the change description.

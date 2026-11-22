@@ -47,24 +47,26 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 
 ## Quality gates
 
-Run `make check` before submitting; backend skips → [TESTING.md](TESTING.md#harness-and-gates);
-every backend leg → [dev container](#dev-container). `.github/workflows/ci.yml` runs `make static`
-in its `lint` job and `make test-strict` in its `test` job, on pushes to `main`, on pull requests,
-weekly, and before each release; its `debian-testing` job → [dependency policy](#dependency-policy).
-The `Makefile` holds each command line; `make help` lists the targets. Tool targets run with
-`uv run --locked`: after editing `pyproject.toml`, run `uv lock`.
+Run `make check` before submitting.
 
-| Target | Gates |
+| Item | Rule |
 | -- | -- |
-| `make install` | The venv matches `uv.lock` |
-| `make fmt` | Formats Python, the root `*.md`, and `docs/`; applies lint fixes |
+| Commands | The `Makefile` holds each command line; `make help` lists the targets. |
+| Lock | Tool targets run with `uv run --locked`: after editing `pyproject.toml`, run `uv lock`. |
+| Formatting | `make fmt` formats Python, the root `*.md`, and `docs/`, and applies lint fixes; it is not a gate. |
+| Backend legs | Skips → [TESTING.md](TESTING.md#harness-and-gates); every leg → [dev container](#dev-container). |
+| CI jobs | `.github/workflows/ci.yml` runs `make install`, then `make static` in its `lint` job and `make test-strict` in its `test` job; its `debian-testing` job → [dependency policy](#dependency-policy). |
+| CI triggers | Pushes to `main`, pull requests, weekly, and before each release. |
+
+| Gate | Checks |
+| -- | -- |
 | `make lint` | Python, the root `*.md`, and `docs/` are formatted; lint passes; strict types → [STYLE.md](STYLE.md#python-baseline) |
 | `make docs-check` | `check_docs.py`, below |
 | `make diagrams-check` | → [diagrams](#diagrams) |
 | `make lock-check` | `uv.lock` matches `pyproject.toml` |
 | `make build` | The sdist and wheel build |
-| `make static` | Every gate except tests |
-| `make check` | Every gate |
+| `make static` | Every gate above |
+| `make check` | `make static`, then `make test` → [test](#test) |
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the

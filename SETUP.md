@@ -48,7 +48,7 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 ## Quality gates
 
 Run `make check` before submitting; backend skips → [TESTING.md](TESTING.md#harness-and-gates);
-CI-equivalent run → [dev container](#dev-container). `.github/workflows/ci.yml` runs `make static`
+every backend leg → [dev container](#dev-container). `.github/workflows/ci.yml` runs `make static`
 in its `lint` job and `make test-strict` in its `test` job, on pushes to `main`, on pull requests,
 weekly, and before each release; its `debian-testing` job → [dependency policy](#dependency-policy).
 The `Makefile` holds each command line; `make help` lists the targets. Tool targets run with

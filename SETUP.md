@@ -59,8 +59,6 @@ the targets. Targets run with `uv run --locked`: after editing `pyproject.toml`,
 | `make install` | The venv matches `uv.lock` |
 | `make fmt` | Formats Python, the root `*.md`, and `docs/`; applies lint fixes |
 | `make lint` | Python, the root `*.md`, and `docs/` are formatted; lint passes; strict types → [STYLE.md](STYLE.md#python-baseline) |
-| `make test` | → [Test](#test) |
-| `make test-strict` | → [Test](#test) |
 | `make docs-check` | `check_docs.py`, below |
 | `make diagrams-check` | → [diagrams](#diagrams) |
 | `make lock-check` | `uv.lock` matches `pyproject.toml` |

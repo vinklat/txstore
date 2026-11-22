@@ -1,4 +1,4 @@
-# Developer commands and quality gates → SETUP.md#quality-gates. CI runs these targets.
+# Developer commands and quality gates → SETUP.md#quality-gates.
 
 RUN := uv run --locked
 MDFORMAT := $(RUN) mdformat --compact-tables --number --wrap 100
@@ -28,7 +28,7 @@ lint: ## Format check (Python, Markdown), lint, strict type check
 test: ## Tests with the coverage gate; missing backends skip
 	$(RUN) pytest --cov
 
-test-strict: ## Tests with the coverage gate; a missing backend fails (CI, dev container)
+test-strict: ## Tests with the coverage gate; a missing backend fails
 	$(RUN) pytest --cov --strict-backends
 
 docs-check: ## Contract and docs parity
@@ -46,9 +46,9 @@ lock-check: ## Check uv.lock matches pyproject.toml
 build: ## Build the sdist and wheel into dist/
 	uv build
 
-static: lint docs-check diagrams-check lock-check build ## Every gate except tests (CI lint job)
+static: lint docs-check diagrams-check lock-check build ## Every gate except tests
 
-check: static test ## Every quality gate (run before each PR)
+check: static test ## Every quality gate
 
 # COPYFILE_DISABLE keeps macOS tar from adding AppleDouble ._* files; GNU tar ignores it.
 debian-test: ## The CI debian-testing job in a throwaway container (needs Docker)

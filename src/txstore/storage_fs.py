@@ -322,7 +322,7 @@ class StorageFS(FootmarkMixin, Storage):
     def _obj_put_reserved(self, rel: str, data: bytes) -> None:
         """Write the reserved root object `rel` directly, replacing a link instead of following it.
 
-        The umask applies, as for objects → [ROADMAP.md](ROADMAP.md#ideas).
+        The umask applies, as for objects → [ROADMAP.md](ROADMAP.md#features).
         """
         self._write_file(os.path.join(self.base_dir, rel), io.BytesIO(data), None, None)
 

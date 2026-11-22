@@ -1,7 +1,7 @@
 # Setup and release contract
 
-Owns: install, dev container, test, quality gates, diagrams, dependency policy, Debian package,
-release, and upgrade notes. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
+Owns: install, dev container, test, quality gates, diagrams, dependency policy, Debian package, and
+release. Routing → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Prerequisites and install
 
@@ -64,8 +64,9 @@ on pull requests, weekly, and before each release; it checks the lockfile throug
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the
 exception classes, 100-column prose, table rows with as many cells as their header, no `TODO`
-markers in contracts, the `docs/*/README.md` indexes, the README version, an upgrade note for that
-version, PyPI-only package sources, and the [diagram](#diagrams) fence and embed rules.
+markers in contracts, the `docs/*/README.md` indexes, the README version, a dated `CHANGELOG.md`
+section for the `pyproject.toml` version, PyPI-only package sources, and the [diagram](#diagrams)
+fence and embed rules.
 
 ## Diagrams
 
@@ -105,7 +106,7 @@ A floor raise names the Debian testing version that satisfies it in the change d
 ## Debian package
 
 txstore ships in Debian as `python3-txstore`, maintained by the Debian Python Team. The packaging
-lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP.md#phases).
+lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP.md#releases).
 
 | Item | Rule |
 | -- | -- |
@@ -132,9 +133,9 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
 | Version | `pyproject.toml` `[project].version` and the `README.md` "Current version" line. |
 | Version parity | `check_docs.py` fails when the two differ. |
 | `__version__` | Read from the installed distribution. |
-| Version bump | `uv version --bump patch` (or `minor`, `major`), the README line to match, and every `Unreleased:` upgrade note renamed to `<version>:`. |
-| Pre-1.0 versions | A minor bump starts a [ROADMAP.md](ROADMAP.md#phases) phase; every other release is a patch, new public names and breaking changes included. Semantic versioning applies from 1.0.0. |
-| Upgrade note | Every release adds a `<version>:` [upgrade note](#upgrade-notes) naming each new public name, breaking change, and renamed or removed setting. |
+| Changelog | Add each new public name, breaking change, and renamed or removed setting as a `Change` and `Migration` row under `## Unreleased`, in the same change → [CHANGELOG.md](CHANGELOG.md). |
+| Version bump | `uv version --bump patch` (or `minor`, `major`), the README line to match, and the `CHANGELOG.md` heading `## Unreleased` renamed to `## <version> - <YYYY-MM-DD>` below a new empty `## Unreleased`. |
+| Pre-1.0 versions | A minor bump starts a [ROADMAP.md](ROADMAP.md#releases) release; every other release is a patch, new public names and breaking changes included. Semantic versioning applies from 1.0.0. |
 | Steps | Version bump → [quality gates](#quality-gates) → merge to `main` → `git tag vX.Y.Z` on `main` → `git push origin vX.Y.Z`. |
 | Trigger | Pushing a tag `vX.Y.Z`, with or without a suffix (e.g. `v0.2.0rc1`). |
 | Tag format | `vX.Y.Z`, the pattern `debian/watch` tracks → [Debian package](#debian-package). |
@@ -148,25 +149,9 @@ lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP
 | Link check | No relative link is left in the wheel's description. |
 | Metadata check | `twine check --strict` passes. |
 | Smoke test | The wheel, installed alone, imports and its `txstore.__version__` equals the tag version. |
-| Stages | TestPyPI, then PyPI, then a GitHub release with the sdist and wheel and a link to the [upgrade notes](#upgrade-notes). |
+| Stages | TestPyPI, then PyPI, then a GitHub release with the sdist and wheel and a link to the tag's [CHANGELOG.md](CHANGELOG.md). |
 | GitHub environments | `testpypi` and `pypi`; `pypi` has a required reviewer, so the PyPI upload waits for approval. |
 | Tag ruleset | A repository ruleset limits who creates `v*` tags. |
 | Trusted publisher identity | Owner `vinklat`, repo `txstore`, workflow `release.yml`. |
 | Trusted publisher on TestPyPI | That identity with environment `testpypi`. |
 | Trusted publisher on PyPI | That identity with environment `pypi`. |
-
-## Upgrade notes
-
-- 0.1.3: `StorageNotSupportedException` and `StorageTooLargeException` are exported from `txstore`;
-  `get`, `transfer`, and the new `get_digests` take `max_size` →
-  [STORAGE.md](STORAGE.md#storage-abi). Breaking: an unsupported operation →
-  `StorageNotSupportedException` → [EXCEPTIONS.md](EXCEPTIONS.md#storage-exceptions); `get_stream`
-  returns a wrapper without backend attributes such as `iter_chunks` or `raw`; iterating it yields
-  lines, not S3's 1 KiB chunks; `tell` on `s3` and `http`, and `fileno` on `http` →
-  `io.UnsupportedOperation`; its body read failures and HTTP `get` streaming change →
-  [STORAGE.md](STORAGE.md#storage-abi). urllib3 2.6 or later is required.
-- 0.1.2: `redact_url` is exported from `txstore`; URLs holding a control character, or `@` with no
-  `//` authority, are refused → [VALIDATION.md](VALIDATION.md#storage-urls).
-- 0.1.1: `TX_STORE_*` variables are renamed to `TXSTORE_*`; the old names are no longer read →
-  [CONFIG.md](CONFIG.md#environment-variables).
-- 0.1.0: initial public release.

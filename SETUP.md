@@ -54,9 +54,8 @@ Run `make check` before submitting.
 | Commands | The `Makefile` holds each command line; `make help` lists the targets. |
 | Lock | Tool targets run with `uv run --locked`: after editing `pyproject.toml`, run `uv lock`. |
 | Formatting | `make fmt` formats Python, the root `*.md`, and `docs/`, and applies lint fixes; it is not a gate. |
-| Backend legs | Skips → [TESTING.md](TESTING.md#harness-and-gates); every leg → [dev container](#dev-container). |
 | CI jobs | `.github/workflows/ci.yml` runs `make install`, then `make static` in its `lint` job and `make test-strict` in its `test` job; its `debian-testing` job → [dependency policy](#dependency-policy). |
-| CI triggers | Pushes to `main`, pull requests, weekly, and before each release. |
+| CI triggers | Pushes to `main`, pull requests, and weekly; release → [release](#release). |
 
 | Gate | Checks |
 | -- | -- |

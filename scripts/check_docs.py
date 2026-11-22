@@ -80,8 +80,9 @@ EXCEPTION_TOKEN_RE = re.compile(r"`([A-Z][A-Za-z0-9]*Exception)`")
 EXCEPTION_CELL_RE = re.compile(r"^`([A-Z][A-Za-z0-9]*Exception)`$")
 # A self-documented ``Makefile`` target: ``name: [prerequisites] ## help``.
 MAKE_TARGET_RE = re.compile(r"^([a-z][a-z-]*):.*## ", re.MULTILINE)
-# Inline code citing make: ``make <target> [<target>...]``, optionally followed by ``var=value``.
-MAKE_CITE_RE = re.compile(r"`make((?: [a-z][a-z-]*)+)(?: [^`]*)?`")
+# A ``make`` command inside inline code, at its start or after ``&&``, ``||`` or ``;``; group 1
+# holds its arguments: targets, ``-flags`` and ``var=value``.
+MAKE_CITE_RE = re.compile(r"(?:^|&&|\|\||;)\s*make\b([^&|;]*)")
 
 Lines = list[tuple[int, str]]
 Table = tuple[int, list[str], list[tuple[int, list[str]]]]
@@ -488,6 +489,16 @@ def check_package_sources() -> list[str]:
     return errors
 
 
+def _make_targets(code: str) -> list[str]:
+    """Targets the ``make`` commands in ``code`` name; flags and ``var=value`` are skipped."""
+    return [
+        arg
+        for match in MAKE_CITE_RE.finditer(code)
+        for arg in match.group(1).split()
+        if "=" not in arg and not arg.startswith("-")
+    ]
+
+
 def check_make_targets(docs: dict[str, str]) -> list[str]:
     """Cited ``make`` targets exist; ``SETUP.md`` cites every documented ``Makefile`` target."""
     makefile = REPO_ROOT / "Makefile"
@@ -498,8 +509,8 @@ def check_make_targets(docs: dict[str, str]) -> list[str]:
     cited_in_setup: set[str] = set()
     for name, text in docs.items():
         for lineno, line in _prose_lines(text):
-            for match in MAKE_CITE_RE.finditer(line):
-                for target in match.group(1).split():
+            for span in INLINE_CODE_RE.findall(line):
+                for target in _make_targets(span[1:-1]):
                     if target not in defined:
                         errors.append(f"{name}:{lineno}: make {target} is not a Makefile target")
                     elif name == "SETUP.md":

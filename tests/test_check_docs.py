@@ -301,6 +301,27 @@ def test_make_targets_cited_exist_and_setup_cites_all(repo: Path) -> None:
     assert check_docs.check_make_targets(docs) == ["A.md:1: make restore is not a Makefile target"]
 
 
+@pytest.mark.parametrize(
+    ("cite", "bad"),
+    [
+        ("`make lint2`", "lint2"),
+        ("`make test_x`", "test_x"),
+        ("`make lint && make foo`", "foo"),
+        ("`make -j4 nope VAR=1`", "nope"),
+    ],
+)
+def test_make_targets_report_mistyped_citation(repo: Path, cite: str, bad: str) -> None:
+    _write(repo, "Makefile", _MAKEFILE)
+    docs = {"SETUP.md": "`make help lint static`\n", "A.md": f"{cite}\n"}
+    assert check_docs.check_make_targets(docs) == [f"A.md:1: make {bad} is not a Makefile target"]
+
+
+def test_make_targets_ignore_fenced_citation(repo: Path) -> None:
+    _write(repo, "Makefile", _MAKEFILE)
+    docs = {"SETUP.md": "`make help lint static`\n", "A.md": "```\nmake restore\n```\n"}
+    assert check_docs.check_make_targets(docs) == []
+
+
 def test_make_targets_report_undocumented_and_hidden_targets(repo: Path) -> None:
     _write(repo, "Makefile", _MAKEFILE)
     docs = {"SETUP.md": "`make help lint`\n\n```\nmake static\n```\n", "A.md": "`make hidden`\n"}

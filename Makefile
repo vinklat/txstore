@@ -9,7 +9,7 @@ DEBIAN_IMAGE := debian:forky
 	build static check debian-test
 
 help: ## List targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
+	@grep -E '^[a-z][a-z-]*:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-15s %s\n", $$1, $$2}'
 
 install: ## Sync the virtualenv from uv.lock
 	uv sync --locked

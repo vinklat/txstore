@@ -30,6 +30,10 @@ The repository root holds the contract documents: the single source of truth for
 written for implementers and automation. You do not need them to use the library. Which contract
 owns what → [AGENTS.md](../../AGENTS.md#canonical-sources).
 
+Upgrade notes for each release → [CHANGELOG.md](../../CHANGELOG.md); planned work →
+[ROADMAP.md](../../ROADMAP.md). Neither is a contract →
+[AGENTS.md](../../AGENTS.md#source-priority).
+
 ## For contributors
 
 Explanations of the implementation, flow diagrams, and code maps live in

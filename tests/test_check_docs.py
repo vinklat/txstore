@@ -259,13 +259,14 @@ def test_version_matches_pyproject(repo: Path) -> None:
     ]
 
 
-def test_upgrade_note_required_for_current_version(repo: Path) -> None:
+def test_changelog_has_dated_section_for_version(repo: Path) -> None:
     _write(repo, "pyproject.toml", '[project]\nversion = "1.2.3"\n')
-    setup = "# Setup\n\n## Upgrade notes\n\n- {note}: x.\n\n## Other\n\n- 1.2.3: elsewhere.\n"
-    assert check_docs.check_upgrade_note({"SETUP.md": setup.format(note="1.2.3")}) == []
-    assert check_docs.check_upgrade_note({"SETUP.md": setup.format(note="1.2.2")}) == [
-        "SETUP.md: no upgrade note for 1.2.3"
-    ]
+    released = "## Unreleased\n\n## 1.2.3 - 2026-01-02\n\n## 1.2.2 - 2026-01-01\n"
+    assert check_docs.check_changelog({"CHANGELOG.md": released}) == []
+    missing = ["CHANGELOG.md: no dated section for 1.2.3"]
+    assert check_docs.check_changelog({}) == missing
+    assert check_docs.check_changelog({"CHANGELOG.md": "## Unreleased\n\n## 1.2.3\n"}) == missing
+    assert check_docs.check_changelog({"CHANGELOG.md": "## 1.2.2 - 2026-01-01\n"}) == missing
 
 
 def test_package_sources_refuse_custom_indexes(repo: Path) -> None:

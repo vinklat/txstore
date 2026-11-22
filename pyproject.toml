@@ -35,7 +35,7 @@ Homepage = "https://github.com/vinklat/txstore"
 Source = "https://github.com/vinklat/txstore"
 Issues = "https://github.com/vinklat/txstore/issues"
 Documentation = "https://github.com/vinklat/txstore/blob/main/docs/guides/README.md"
-Changelog = "https://github.com/vinklat/txstore/blob/main/SETUP.md#upgrade-notes"
+Changelog = "https://github.com/vinklat/txstore/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [

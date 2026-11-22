@@ -111,4 +111,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/*
           --repo "$GITHUB_REPOSITORY"
           --title "$GITHUB_REF_NAME"
-          --notes "Upgrade notes: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/SETUP.md#upgrade-notes"
+          --notes "Changelog: https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md"

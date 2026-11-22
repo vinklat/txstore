@@ -54,7 +54,7 @@ Every backend implements the abstract methods; `put` is shared over `put_stream`
 | Read metrics: errors | A failed open, a failed body read, or a size-cap refusal counts a read error, as any refusal made after the backend answered does. |
 
 Streaming: `CHUNK_SIZE` is 1 MiB. HTTP requests use `REQUEST_TIMEOUT` of 30 s per connect and per
-socket read, with no total deadline → [ROADMAP.md](ROADMAP.md#ideas). `StorageMetrics` counts
+socket read, with no total deadline → [ROADMAP.md](ROADMAP.md#features). `StorageMetrics` counts
 read/write/delete objects, bytes, and errors per instance; each backend counts its own written bytes
 in `put_stream`, so a `transfer` counts the source's read and the destination's write once each;
 reads count as the Read metrics rows say. Only the public verbs count: history and lock I/O and the
@@ -247,7 +247,7 @@ the listing stays exact for the footmark classifiers; a dotfile original it writ
 differ. `_transaction_abandon()` forgets the active transaction and keeps its footmarks; when
 `maybe_transaction` calls it → [Failure semantics](#failure-semantics). Commit, discard, and revert
 each list every key under the root, so a recorded write costs O(root size) under `history_lock` →
-[ROADMAP.md](ROADMAP.md#ideas).
+[ROADMAP.md](ROADMAP.md#features).
 
 ### Failure semantics
 

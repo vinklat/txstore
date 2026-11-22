@@ -20,7 +20,7 @@ Checks (SETUP.md quality gates; AGENTS.md contract writing rules):
 - every ``ROOT.md#anchor`` cited in ``src/`` or ``tests/`` names a root document and a heading;
 - every ``docs/<dir>/`` holding pages has a ``README.md`` that links each sibling page;
 - the ``README.md`` "Current version" line equals ``[project].version``;
-- ``SETUP.md`` "Upgrade notes" holds a ``- <version>:`` note for ``[project].version``;
+- ``CHANGELOG.md`` has a dated ``## <version> - <YYYY-MM-DD>`` section for ``[project].version``;
 - packages resolve from public PyPI only: ``pyproject.toml`` declares no custom index and every
   ``uv.lock`` registry is ``https://pypi.org/simple``.
 
@@ -68,6 +68,8 @@ TABLE_SEP_RE = re.compile(r"^\|[\s:|-]+\|?\s*$")
 CELL_SPLIT_RE = re.compile(r"(?<!\\)\|")
 INLINE_CODE_RE = re.compile(r"`[^`]*`")
 README_VERSION_RE = re.compile(r"Current version: \*\*([^*]+)\*\*")
+# A released ``CHANGELOG.md`` section: ``## <version> - <YYYY-MM-DD>``.
+CHANGELOG_VERSION_RE = re.compile(r"^## (\S+) - \d{4}-\d{2}-\d{2}\s*$", re.MULTILINE)
 TODO_RE = re.compile(r"\b(?:TODO|FIXME|XXX)\b")
 URL_RE = re.compile(r"https?://")
 CODE_REF_RE = re.compile(r"\b([A-Z][A-Z]+\.md)#([a-z0-9-]+)")
@@ -438,9 +440,15 @@ def check_docs_index(docs: dict[str, str]) -> list[str]:
     return errors
 
 
+def _project_version() -> str:
+    """``[project].version`` of ``pyproject.toml``."""
+    version: str = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
+    return version
+
+
 def check_version(docs: dict[str, str]) -> list[str]:
     """The ``README.md`` "Current version" line carries ``[project].version``."""
-    expected = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
+    expected = _project_version()
     readme = README_VERSION_RE.search(docs.get("README.md", ""))
     found = readme.group(1) if readme else None
     if found == expected:
@@ -448,14 +456,12 @@ def check_version(docs: dict[str, str]) -> list[str]:
     return [f"README.md: version {found or 'missing'}, pyproject.toml has {expected}"]
 
 
-def check_upgrade_note(docs: dict[str, str]) -> list[str]:
-    """``SETUP.md`` "Upgrade notes" holds a note for ``[project].version``."""
-    version = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text())["project"]["version"]
-    _, _, notes = docs.get("SETUP.md", "").partition("\n## Upgrade notes\n")
-    notes = notes.split("\n## ", 1)[0]
-    if re.search(rf"^- {re.escape(version)}:", notes, re.MULTILINE):
+def check_changelog(docs: dict[str, str]) -> list[str]:
+    """``CHANGELOG.md`` has a dated ``## <version> - <date>`` section for ``[project].version``."""
+    expected = _project_version()
+    if expected in CHANGELOG_VERSION_RE.findall(docs.get("CHANGELOG.md", "")):
         return []
-    return [f"SETUP.md: no upgrade note for {version}"]
+    return [f"CHANGELOG.md: no dated section for {expected}"]
 
 
 def check_package_sources() -> list[str]:
@@ -497,7 +503,7 @@ def main() -> int:
         *check_code_references(docs),
         *check_docs_index(all_docs),
         *check_version(docs),
-        *check_upgrade_note(docs),
+        *check_changelog(docs),
         *check_package_sources(),
     ]
     for error in errors:

@@ -8,8 +8,8 @@ fact; link instead of copying.
 1. The root contract that owns the domain below; `STYLE.md` prevails on style.
 2. Implementation under `src/txstore/` when checking current behavior.
 3. `docs/guides/` for user how-tos, `docs/development/` for contributor explanations and diagrams,
-   `docs/reference/` for reference artifacts, and `ROADMAP.md` for planned work and known
-   deviations. All are non-canonical.
+   `docs/reference/` for reference artifacts, `ROADMAP.md` for planned work and known deviations,
+   and `CHANGELOG.md` for released changes and upgrade notes. All are non-canonical.
 
 Resolve drift by updating the owning contract and implementation together, not by adding a second
 definition.
@@ -25,7 +25,7 @@ definition.
 | `EXCEPTIONS.md` | Exception classes, raising conditions, chaining rules |
 | `CONFIG.md` | `make_storage` and retention settings, `TXSTORE_*` variables, defaults, secrets |
 | `TESTING.md` | Required coverage, harness rules, gates |
-| `SETUP.md` | Install, dev container, test, quality gates, diagrams, dependency policy, Debian package, release, upgrade notes |
+| `SETUP.md` | Install, dev container, test, quality gates, diagrams, dependency policy, Debian package, release |
 
 ## Task routing
 
@@ -46,8 +46,8 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 | Bug fix | Owning contract + `EXCEPTIONS.md` | `TESTING.md` |
 | Tests | `TESTING.md` | Contract for the behavior under test |
 | Contract / doc edit | Writing rules below → owning contract | `scripts/check_docs.py`, `SETUP.md` quality gates |
-| Debian packaging | `SETUP.md` Debian package | `ROADMAP.md` phases, `.github/debian-test.sh` |
-| Release | `SETUP.md` release | `.github/workflows/release.yml`, `ROADMAP.md` phases |
+| Debian packaging | `SETUP.md` Debian package | `ROADMAP.md` releases, `.github/debian-test.sh` |
+| Release | `SETUP.md` release | `.github/workflows/release.yml`, `CHANGELOG.md`, `ROADMAP.md` releases |
 | Quality gate / CI / dev container change | `SETUP.md` quality gates | `.github/workflows/ci.yml`, `.devcontainer/` |
 | Developer explanation / diagram | `docs/development/` | Owning root contract, `SETUP.md` diagrams |
 | User how-to / future behavior | `docs/guides/` / `ROADMAP.md` | Owning root contract before implementing |

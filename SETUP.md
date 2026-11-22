@@ -106,7 +106,7 @@ A floor raise names the Debian testing version that satisfies it in the change d
 ## Debian package
 
 txstore ships in Debian as `python3-txstore`, maintained by the Debian Python Team. The packaging
-lives on salsa, not in this repository; upload progress → [ROADMAP.md](ROADMAP.md#releases).
+lives on salsa, not in this repository; planned release → [ROADMAP.md](ROADMAP.md#releases).
 
 | Item | Rule |
 | -- | -- |

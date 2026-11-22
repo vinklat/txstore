@@ -27,7 +27,7 @@ not copied here.
 | Gate | Contract |
 | -- | -- |
 | Validation | Every rule in `VALIDATION.md` has a success and a failure case. |
-| Coverage | `make test` (`pytest --cov`) measures the `[tool.coverage.run]` source package and fails below its branch-coverage `fail_under` in `pyproject.toml`. |
+| Coverage | `make test` → [SETUP.md](SETUP.md#test) measures the `[tool.coverage.run]` source package and fails below its branch-coverage `fail_under` in `pyproject.toml`. |
 | Scripts | `scripts/` is outside the coverage source; the Contract docs and Diagrams rows hold its tests. |
 | Configuration | Every `CONFIG.md` setting is asserted in the [resolution order](CONFIG.md#resolution). |
 | Schemes | Every URL-routable storage scheme has direct backend tests. |

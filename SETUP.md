@@ -49,23 +49,21 @@ Harness rules → [TESTING.md](TESTING.md#harness-and-gates); required coverage 
 
 Run `make check` before submitting. `.github/workflows/ci.yml` runs `make static` in its `lint` job
 and `make test-strict` in its `test` job, on pushes to `main`, on pull requests, weekly, and before
-each release. The `Makefile` owns each command; `make help` lists the targets.
+each release. The `Makefile` holds each command line; `make help` lists the targets.
 
-| Target | Runs |
+| Target | Gates |
 | -- | -- |
-| `make install` | `uv sync --locked`: the venv from `uv.lock` |
-| `make fmt` | `ruff format`, `ruff check --fix`, and `mdformat` on the root `*.md` |
-| `make lint` | `ruff format --check`, `mdformat --check` on the root `*.md`, `ruff check`, `mypy`; mode and scope → [STYLE.md](STYLE.md#python-baseline) |
-| `make test` | `pytest --cov` → [Test](#test) |
-| `make test-strict` | `pytest --cov --strict-backends`; the Debian job runs neither → [dependency policy](#dependency-policy) |
-| `make docs-check` | `scripts/check_docs.py` |
-| `make diagrams-check` | `scripts/render_diagrams.py --check` → [diagrams](#diagrams) |
-| `make lock-check` | `uv lock --check` |
-| `make build` | `uv build` |
-| `make static` | `lint`, `docs-check`, `diagrams-check`, `lock-check`, `build` |
-| `make check` | `static`, then `test` |
-
-`mdformat` runs with `--compact-tables --number --wrap 100`, from the locked `dev` group.
+| `make install` | The venv matches `uv.lock` |
+| `make fmt` | Formats Python and the root `*.md`; applies lint fixes |
+| `make lint` | Python and the root `*.md` are formatted; lint passes; strict types → [STYLE.md](STYLE.md#python-baseline) |
+| `make test` | → [Test](#test) |
+| `make test-strict` | → [Test](#test) |
+| `make docs-check` | `check_docs.py`, below |
+| `make diagrams-check` | → [diagrams](#diagrams) |
+| `make lock-check` | `uv.lock` matches `pyproject.toml` |
+| `make build` | The sdist and wheel build |
+| `make static` | Every gate except tests |
+| `make check` | Every gate |
 
 `check_docs.py` verifies links and anchors in root contracts and `docs/`, contract anchors cited in
 code, `CONFIG.md` parity with the `TXSTORE_*` variables read, `EXCEPTIONS.md` parity with the
@@ -105,7 +103,8 @@ txstore is packaged for Debian, so its dependencies stay installable from Debian
 | Generated code | No module is generated code pinned to a runtime version. |
 | Tests | Run offline from the source distribution, with `pytest`, `moto`, and `responses` as the only test-only packages and no dependence on `addopts` or a coverage plugin: the Debian job installs only those. The Debian package's test set → [Debian package](#debian-package). |
 | Source distribution | Holds `src`, `tests`, `docs`, `scripts`, the root documents, `LICENSE`, `Makefile`, and `uv.lock`, so a distribution build and its tests need no git checkout. |
-| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). `make debian-test` runs it locally in a throwaway container (needs Docker). |
+| CI | The `debian-testing` job runs `.github/debian-test.sh`: the suite on Debian's packaged dependencies, pip installing only txstore with no index; triggers → [quality gates](#quality-gates). |
+| Local Debian run | `make debian-test` runs `.github/debian-test.sh` in a throwaway container; needs Docker. |
 
 A floor raise names the Debian testing version that satisfies it in the change description.
 

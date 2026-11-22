@@ -118,7 +118,8 @@ Domain owners and agent navigation → [AGENTS.md](AGENTS.md#canonical-sources).
 
 ## Technology
 
-Python 3.13+, boto3, requests, pyxattr; pytest, moto, Ruff, mypy, and uv for development.
+Python 3.13+, boto3, requests, pyxattr; contributor toolchain →
+[SETUP.md](SETUP.md#prerequisites-and-install).
 
 ## License
 

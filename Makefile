@@ -2,7 +2,7 @@
 
 UV := uv run
 MDFORMAT := $(UV) mdformat --compact-tables --number --wrap 100
-# Follows the CI debian-testing job's container → SETUP.md#dependency-policy.
+# Follows the debian-testing job's container in .github/workflows/ci.yml.
 DEBIAN_IMAGE := debian:forky
 
 .PHONY: help install fmt lint test test-strict docs-check diagrams diagrams-check lock-check \

@@ -61,8 +61,8 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
    setting → [CONFIG.md](CONFIG.md#maintenance); a new public name →
    [STRUCTURE.md](STRUCTURE.md#maintenance).
 3. Add the narrowest test that falsifies the change per [TESTING.md](TESTING.md#maintenance).
-4. Run `make check`, the [SETUP.md quality gates](SETUP.md#quality-gates); contract and `docs/`
-   edits also run `make fmt docs-check`. CI runs the gates again.
+4. Run `make check`, the [SETUP.md quality gates](SETUP.md#quality-gates); contract edits also run
+   `make fmt docs-check`, `docs/` edits `make docs-check`. CI runs the gates again.
 
 ## Contract writing rules
 
@@ -78,4 +78,4 @@ Read only the relevant sections; locate code from [STRUCTURE.md](STRUCTURE.md#la
 - No TODOs or "current exception" notes in contracts; record them in
   [ROADMAP.md known deviations](ROADMAP.md#known-deviations) and link.
 - Wrap prose at 100 columns; table rows are exempt. Prefer `→` shortcuts to sentences.
-- After any contract or `docs/` edit run `make fmt docs-check`.
+- After a contract edit run `make fmt docs-check`; after a `docs/` edit, `make docs-check`.
